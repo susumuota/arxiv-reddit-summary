@@ -1,0 +1,7 @@
+.python-version
+.vscode
+.DS_Store
+__pycache__
+.venv
+poetry.lock
+*.ipynb

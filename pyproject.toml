@@ -1,0 +1,39 @@
+[tool.poetry]
+name = "arxiv-reddit-summary"
+version = "0.1.0"
+description = ""
+authors = ["Susumu OTA <1632335+susumuota@users.noreply.github.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "arxiv_reddit_summary"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+praw = "^7.6.1"
+pandas = "^1.5.3"
+arxiv = "^1.4.3"
+tweepy = "^4.12.1"
+python-dateutil = "^2.8.2"
+imgkit = "^1.2.2"
+google-cloud-storage = "^2.7.0"
+deepl = "^1.13.0"
+pysbd = "^0.3.4"
+slack-sdk = "^3.19.5"
+nanoatp = "^0.1.0"
+
+
+[tool.poetry.group.dev.dependencies]
+jupyterlab = "^3.6.1"
+black = "^23.3.0"
+flake8 = "^6.0.0"
+isort = "^5.12.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 119
+
+[tool.isort]
+profile = "black"
