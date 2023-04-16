@@ -9,21 +9,21 @@ packages = [{include = "arxiv_reddit_summary"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-praw = "^7.6.1"
-pandas = "^1.5.3"
-arxiv = "^1.4.3"
-tweepy = "^4.12.1"
+praw = "^7.7.0"
+pandas = "^2.0.0"
+arxiv = "^1.4.4"
+tweepy = "^4.13.0"
 python-dateutil = "^2.8.2"
-imgkit = "^1.2.2"
-google-cloud-storage = "^2.7.0"
-deepl = "^1.13.0"
+imgkit = "^1.2.3"
+google-cloud-storage = "^2.8.0"
+deepl = "^1.14.0"
 pysbd = "^0.3.4"
-slack-sdk = "^3.19.5"
-nanoatp = "^0.1.0"
+slack-sdk = "^3.21.1"
+nanoatp = "^0.3.0"
 
 
 [tool.poetry.group.dev.dependencies]
-jupyterlab = "^3.6.1"
+jupyterlab = "^3.6.3"
 black = "^23.3.0"
 flake8 = "^6.0.0"
 isort = "^5.12.0"
