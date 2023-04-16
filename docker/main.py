@@ -47,6 +47,7 @@ def submission_to_dict(submission: praw.reddit.Submission):
         'created_utc': submission.created_utc,
         'arxiv_id': parse_arxiv_ids(submission.selftext),
         'title': submission.title,
+        'selftext': submission.selftext,
     }
 
 
@@ -70,8 +71,8 @@ def arxiv_result_to_dict(r: arxiv.Result):
         'arxiv_id': arxiv_id,
         'arxiv_id_v': arxiv_id_v,
         'entry_id': r.entry_id,
-        'updated': str(r.updated), # TODO
-        'published': str(r.published), # TODO
+        'updated': str(r.updated),  # TODO
+        'published': str(r.published),  # TODO
         'title': r.title,
         'authors': [str(a) for a in r.authors],
         'summary': r.summary,
@@ -242,7 +243,7 @@ def post_to_slack_submissions(api, channel, ts, df):
         blocks = []
         stats_md = f'_*{score}* Upvotes, {num_comments} Comments_'
         created_at_md = datetime.fromtimestamp(created_utc).strftime('%d %b %Y')
-        url_md = f'<http://reddit.com/{id}|{created_at_md}>'
+        url_md = f'<https://reddit.com/{id}|{created_at_md}>'
         blocks = [{'type': 'section', 'text': {'type': 'mrkdwn', 'text': f'({i+1}/{len(df)}) {stats_md}, {url_md}\n'}}]
         api.chat_postMessage(channel=channel, text=url_md, thread_ts=ts, blocks=blocks)
         time.sleep(1)
@@ -309,11 +310,22 @@ def post_to_twitter_first_page(api_v1, api_v2, df, i, is_new, arxiv_id, updated,
     return prev_tweet_id
 
 
+def post_to_twitter_link(api_v2, prev_tweet_id, arxiv_id):
+    uri = f"https://twitter.com/search?q=arxiv.org%2Fabs%2F{arxiv_id}"
+    text = f"Twitter Search: {uri}"
+    try:
+        response = api_v2.create_tweet(text=strip_tweet(text, 280), user_auth=True, in_reply_to_tweet_id=prev_tweet_id)
+        prev_tweet_id = response.data['id']
+    except Exception as e:
+        print(e)
+    return prev_tweet_id
+
+
 def post_to_twitter_tweets(api_v2, prev_tweet_id, arxiv_id, df):
     for i, (id, score, num_comments, created_utc) in enumerate(zip(df['id'], df['score'], df['num_comments'], df['created_utc'])):
         stats_md = f'{score} Upvotes, {num_comments} Comments'
         created_at_md = datetime.fromtimestamp(created_utc).strftime('%d %b %Y')
-        url_md = f'http://reddit.com/{id}'
+        url_md = f'https://reddit.com/{id}'
         text = f'({i+1}/{len(df)}) {stats_md}, {created_at_md}\n{url_md}\n'
         try:
             response = api_v2.create_tweet(text=strip_tweet(text, 280), user_auth=True, in_reply_to_tweet_id=prev_tweet_id)
@@ -380,6 +392,8 @@ def post_to_twitter(api_v1, api_v2, dlc, df, submission_df):
         is_new = True
         prev_tweet_id = post_to_twitter_first_page(api_v1, api_v2, df, i, is_new, arxiv_id, updated, title, summary_texts, authors, score, num_comments, count, primary_category, categories)
         time.sleep(1)
+        prev_tweet_id = post_to_twitter_link(api_v2, prev_tweet_id, arxiv_id)
+        time.sleep(1)
         top_n_submissions = submission_df[submission_df['arxiv_id'].apply(lambda ids: arxiv_id in ids)].head(5)
         prev_tweet_id = post_to_twitter_tweets(api_v2, prev_tweet_id, arxiv_id, top_n_submissions)
         post_to_twitter_trans(api_v1, api_v2, prev_tweet_id, arxiv_id, title, authors, summary_texts, trans_texts)
@@ -401,12 +415,30 @@ def post_to_bluesky_first_page(api: nanoatp.BskyAgent, df, i, is_new, arxiv_id, 
     text, summary_text = generate_twitter_first_page(df, i, is_new, arxiv_id, updated, title, summary_texts, authors, score, num_comments, count, primary_category, categories)
     images = []
     image = upload_first_page_to_bluesky(api, arxiv_id, strip_tweet(summary_text, 300))
-    if image:
-        images.append(image)
+    images.append(image) if image else None
     parent_post = None
     try:
         embed = {"$type": "app.bsky.embed.images#main", "images": images}
         record = {"text": strip_tweet(text, 300), "embed": embed}
+        rt = nanoatp.RichText(record["text"])
+        rt.detectFacets(api)
+        record.update({"facets": rt.facets}) if len(rt.facets) > 0 else None
+        parent_post = api.post(record)
+    except Exception as e:
+        print(e)
+    return parent_post
+
+
+def post_to_bluesky_link(api: nanoatp.BskyAgent, root_post, parent_post, arxiv_id, title):
+    uri = f"https://twitter.com/search?q=arxiv.org%2Fabs%2F{arxiv_id}"
+    text = f"Twitter Search: {uri}"
+    try:
+        external = {"$type": "app.bsky.embed.external#external", "uri": uri, "title": "Twitter Search", "description": title}
+        embed = {"$type": "app.bsky.embed.external#main", "external": external}
+        record = {"text": strip_tweet(text, 300), "reply": {"root": root_post, "parent": parent_post}, "embed": embed}
+        rt = nanoatp.RichText(record["text"])
+        rt.detectFacets(api)
+        record.update({"facets": rt.facets}) if len(rt.facets) > 0 else None
         parent_post = api.post(record)
     except Exception as e:
         print(e)
@@ -414,13 +446,18 @@ def post_to_bluesky_first_page(api: nanoatp.BskyAgent, df, i, is_new, arxiv_id, 
 
 
 def post_to_bluesky_posts(api: nanoatp.BskyAgent, root_post, parent_post, arxiv_id, df):
-    for i, (id, score, num_comments, created_utc) in enumerate(zip(df['id'], df['score'], df['num_comments'], df['created_utc'])):
+    for i, (id, score, num_comments, created_utc, title, selftext) in enumerate(zip(df['id'], df['score'], df['num_comments'], df['created_utc'], df['title'], df['selftext'])):
         stats_md = f'{score} Upvotes, {num_comments} Comments'
         created_at_md = datetime.fromtimestamp(created_utc).strftime('%d %b %Y')
-        url_md = f'http://reddit.com/{id}'
+        url_md = f'https://reddit.com/{id}'
         text = f'({i+1}/{len(df)}) {stats_md}, {created_at_md}\n{url_md}\n'
         try:
-            record = {"text": strip_tweet(text, 300), "reply": {"root": root_post, "parent": parent_post}}
+            external = {"$type": "app.bsky.embed.external#external", "uri": url_md, "title": title, "description": selftext}
+            embed = {"$type": "app.bsky.embed.external#main", "external": external}
+            record = {"text": strip_tweet(text, 300), "reply": {"root": root_post, "parent": parent_post}, "embed": embed}
+            rt = nanoatp.RichText(record["text"])
+            rt.detectFacets(api)
+            record.update({"facets": rt.facets}) if len(rt.facets) > 0 else None
             parent_post = api.post(record)
         except Exception as e:
             print(e)
@@ -442,12 +479,14 @@ def post_to_bluesky_trans(api: nanoatp.BskyAgent, root_post, parent_post, arxiv_
     trans_text = ''.join(trans_texts)
     images = []
     image = upload_html_to_bluesky(api, f'{arxiv_id}.trans.jpg', html_text, strip_tweet(trans_text, 300))
-    if image:
-        images.append(image)
+    images.append(image) if image else None
     text = f'https://arxiv.org/abs/{arxiv_id}\n{trans_text}'
     try:
         embed = {"$type": "app.bsky.embed.images#main", "images": images}
         record = {"text": strip_tweet(text, 300), "reply": {"root": root_post, "parent": parent_post}, "embed": embed}
+        rt = nanoatp.RichText(record["text"])
+        rt.detectFacets(api)
+        record.update({"facets": rt.facets}) if len(rt.facets) > 0 else None
         parent_post = api.post(record)
     except Exception as e:
         print(e)
@@ -466,12 +505,14 @@ def post_to_bluesky_ranking(api: nanoatp.BskyAgent, dlc, df):
 
     metadata = '\n'.join(map(fmt, enumerate(zip(rev_df['arxiv_id']))))
     image = upload_html_to_bluesky(api, 'top_n.jpg', html_text, strip_tweet(metadata, 300))
-    if image:
-        images.append(image)
+    images.append(image) if image else None
     text = title
     try:
         embed = {"$type": "app.bsky.embed.images#main", "images": images}
         record = {"text": strip_tweet(text, 300), "embed": embed}
+        rt = nanoatp.RichText(record["text"])
+        rt.detectFacets(api)
+        record.update({"facets": rt.facets}) if len(rt.facets) > 0 else None
         return api.post(record)
     except Exception as e:
         print(e)
@@ -491,6 +532,8 @@ def post_to_bluesky(api: nanoatp.BskyAgent, dlc, df, submission_df):
         is_new = True
         parent_post = post_to_bluesky_first_page(api, df, i, is_new, arxiv_id, updated, title, summary_texts, authors, score, num_comments, count, primary_category, categories)
         root_post = parent_post
+        time.sleep(1)
+        parent_post = post_to_bluesky_link(api, root_post, parent_post, arxiv_id, title)
         time.sleep(1)
         top_n_submissions = submission_df[submission_df['arxiv_id'].apply(lambda ids: arxiv_id in ids)].head(5)
         parent_post = post_to_bluesky_posts(api, root_post, parent_post, arxiv_id, top_n_submissions)
@@ -549,11 +592,11 @@ def main():
     dlc.save_to_gcs(gcs_bucket, 'deepl_cache.json.gz')
 
     # post
-    # post_to_slack(slack_api, slack_channel, dlc, filtered_df, submission_df)
+    post_to_slack(slack_api, slack_channel, dlc, filtered_df, submission_df)
 
     post_to_bluesky(bluesky_api, dlc, filtered_df, submission_df)
 
-    # post_to_twitter(tweepy_api_v1, tweepy_api_v2, dlc, filtered_df, submission_df)
+    post_to_twitter(tweepy_api_v1, tweepy_api_v2, dlc, filtered_df, submission_df)
 
 
 if __name__ == '__main__':
