@@ -482,12 +482,12 @@ gcloud logging read "resource.type=cloud_run_job" \
 - https://codelabs.developers.google.com/cloud-run-jobs-and-cloud-scheduler#4
 
 ```sh
-export SCHEDULER_JOB_NAME="arxiv-reddit-summary-job-everyday-8am"
+export SCHEDULER_JOB_NAME="arxiv-reddit-summary-job-everyday-9am"
 gcloud services enable cloudscheduler.googleapis.com --project=$PROJECT_ID
 gcloud scheduler jobs create http $SCHEDULER_JOB_NAME \
   --project=$PROJECT_ID \
   --location=$REGION \
-  --schedule="0 8 * * *" \
+  --schedule="0 9 * * *" \
   --time-zone "Asia/Tokyo" \
   --uri="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${RUN_JOB_NAME}:run" \
   --http-method="POST" \

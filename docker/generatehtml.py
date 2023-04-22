@@ -1,5 +1,4 @@
 # SPDX-FileCopyrightText: 2023 Susumu OTA <1632335+susumuota@users.noreply.github.com>
-#
 # SPDX-License-Identifier: MIT
 
 import re
@@ -100,35 +99,11 @@ def generate_top_n_html(page_title, date, df, dlc):
     df = df[::-1]  # normal order (reversed reversed order)
     items = []
     twenty_three_hours_ago = datetime.now(timezone.utc) - timedelta(hours=23)
-    for i, (arxiv_id, updated, title, primary_category, categories, score, num_comments, count) in enumerate(
-        zip(
-            df["arxiv_id"],
-            df["updated"],
-            df["title"],
-            df["primary_category"],
-            df["categories"],
-            df["score"],
-            df["num_comments"],
-            df["count"],
-        )
-    ):
-        trans_texts, trans_ts = dlc.get(arxiv_id, None)
+    for i, (arxiv_id, updated, title, primary_category, categories, score, num_comments, count) in enumerate(zip(df["arxiv_id"], df["updated"], df["title"], df["primary_category"], df["categories"], df["score"], df["num_comments"], df["count"])):
+        _, trans_ts = dlc.get(arxiv_id, None)
         new_icon = "<b>[New]</b> " if twenty_three_hours_ago < datetime.fromisoformat(trans_ts) else ""  # TODO
-        categories = " | ".join(
-            [primary_category] + [c for c in categories if c != primary_category and re.match(r"\w+\.\w+$", c)]
-        )
+        categories = " | ".join([primary_category] + [c for c in categories if c != primary_category and re.match(r"\w+\.\w+$", c)])
         stats = f"<b>{score}</b> Upvotes, {num_comments} Comments, {count} Posts"
         updated = dateutil.parser.isoparse(updated).strftime("%d %b %Y")
-        items.append(
-            HTML_TOP_N_ITEM_TEMPLATE.format(
-                i=i + 1,
-                n=len(df),
-                new_icon=new_icon,
-                title=title,
-                stats=stats,
-                categories=categories,
-                updated=updated,
-                arxiv_id=arxiv_id,
-            )
-        )
+        items.append(HTML_TOP_N_ITEM_TEMPLATE.format(i=i + 1, n=len(df), new_icon=new_icon, title=title, stats=stats, categories=categories, updated=updated, arxiv_id=arxiv_id))
     return HTML_TOP_N_TEMPLATE.format(title=page_title, date=date, content="\n".join(items))
