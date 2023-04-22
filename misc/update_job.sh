@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # SPDX-FileCopyrightText: 2022 Susumu OTA <1632335+susumuota@users.noreply.github.com>
 # SPDX-License-Identifier: MIT
@@ -14,7 +14,7 @@ export RUN_SERVICE_ACCOUNT="run-sa"
 export REPOSITORY="arxiv-reddit-summary"
 export TAG_NAME="latest"
 export RUN_JOB_NAME="arxiv-reddit-summary-job-1"
-export SCHEDULER_JOB_NAME="arxiv-reddit-summary-job-everyday-8am"
+export SCHEDULER_JOB_NAME="arxiv-reddit-summary-job-everyday-9am"
 
 
 gcloud artifacts repositories list --project=$PROJECT_ID
