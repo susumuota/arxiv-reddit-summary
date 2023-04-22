@@ -9,9 +9,10 @@ from shlex import quote
 
 import dateutil.parser
 import imgkit
+import pandas as pd
 
 
-def download_arxiv_pdf(arxiv_id, tmp_dir):
+def download_arxiv_pdf(arxiv_id: str, tmp_dir: str):
     dir = quote(tmp_dir)
     output = quote(f"{arxiv_id}.pdf")
     url = quote(f"https://arxiv.org/pdf/{arxiv_id}.pdf")
@@ -20,14 +21,14 @@ def download_arxiv_pdf(arxiv_id, tmp_dir):
     return os.path.join(tmp_dir, f"{arxiv_id}.pdf")
 
 
-def pdf_to_png(pdf_filename):
+def pdf_to_png(pdf_filename: str):
     filename = quote(pdf_filename)
     result = subprocess.run(f"pdftoppm -q -png -singlefile -scale-to-x 1200 -scale-to-y -1 {filename} {filename}", shell=True)
     assert result.returncode == 0  # TODO
     return f"{pdf_filename}.png"
 
 
-def html_to_image(html, image_filename):
+def html_to_image(html: str, image_filename: str):
     result = imgkit.from_string(html, image_filename, options={"width": 1200, "quiet": ""})
     assert result is True  # TODO
     return image_filename
@@ -54,11 +55,11 @@ def strip_tweet(text: str, max_length=280, dots="..."):
     return text
 
 
-def generate_first_page(df, i, is_new, arxiv_id, updated, title, summary_texts, authors, score, num_comments, count, primary_category, categories):
+def generate_first_page(df: pd.DataFrame, i: int, is_new: bool, arxiv_id: str, updated: str, title: str, summary_texts: list[str], authors: list[str], score: int, num_comments: int, count: int, primary_category: str, categories: list[str]):
     summary_text = " ".join(summary_texts)
     new_md = "🆕" if is_new else ""
     authors_md = ", ".join(authors)
-    categories_md = avoid_auto_link(" | ".join([c for c in [primary_category] + [c for c in categories if c != primary_category and re.match(r"\w+\.\w+$", c)]]))
+    categories_md = avoid_auto_link(" | ".join([primary_category] + [c for c in categories if c != primary_category and re.match(r"\w+\.\w+$", c)]))
     stats_md = f"{score} Upvotes, {num_comments} Comments, {count} Posts"
     updated_md = dateutil.parser.isoparse(updated).strftime("%d %b %Y")
     title_md = title
@@ -67,7 +68,7 @@ def generate_first_page(df, i, is_new, arxiv_id, updated, title, summary_texts, 
     return text, summary_text
 
 
-def avoid_auto_link(text):
+def avoid_auto_link(text: str):
     """replace period to one dot leader to avoid auto link.
     https://shkspr.mobi/blog/2015/01/how-to-stop-twitter-auto-linking-urls/"""
     return text.replace(".", "․")

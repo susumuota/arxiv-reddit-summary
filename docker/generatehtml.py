@@ -6,6 +6,8 @@ from datetime import datetime, timedelta, timezone
 from itertools import zip_longest
 
 import dateutil.parser
+import deeplcache
+import pandas as pd
 
 HTML_TRANS_TEMPLATE = """
 <html>
@@ -52,7 +54,7 @@ HTML_TRANS_ITEM_TEMPLATE = """
 """
 
 
-def generate_trans_html(arxiv_id, title, authors, trans_texts, summary_texts):
+def generate_trans_html(arxiv_id: str, title: str, authors: list[str], trans_texts: list[str], summary_texts: list[str]):
     authors_md = ", ".join(authors)
     title_md = title
     url_md = f"https://arxiv.org/abs/{arxiv_id}"
@@ -95,12 +97,15 @@ HTML_TOP_N_ITEM_TEMPLATE = """
 """
 
 
-def generate_top_n_html(page_title, date, df, dlc):
+def generate_top_n_html(page_title: str, date: str, df: pd.DataFrame, dlc: deeplcache.DeepLCache):
     df = df[::-1]  # normal order (reversed reversed order)
     items = []
     twenty_three_hours_ago = datetime.now(timezone.utc) - timedelta(hours=23)
     for i, (arxiv_id, updated, title, primary_category, categories, score, num_comments, count) in enumerate(zip(df["arxiv_id"], df["updated"], df["title"], df["primary_category"], df["categories"], df["score"], df["num_comments"], df["count"])):
-        _, trans_ts = dlc.get(arxiv_id, None)
+        trans = dlc.get(arxiv_id, None)
+        if trans is None:
+            continue
+        _, trans_ts = trans
         new_icon = "<b>[New]</b> " if twenty_three_hours_ago < datetime.fromisoformat(trans_ts) else ""  # TODO
         categories = " | ".join([primary_category] + [c for c in categories if c != primary_category and re.match(r"\w+\.\w+$", c)])
         stats = f"<b>{score}</b> Upvotes, {num_comments} Comments, {count} Posts"

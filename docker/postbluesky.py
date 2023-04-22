@@ -5,29 +5,31 @@ import os
 import tempfile
 import time
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
-import nanoatp
-import pysbd
-
+import deeplcache
 import generatehtml
+import nanoatp
+import pandas as pd
+import pysbd
 import utils
 
 
-def upload_first_page_to_bluesky(api: nanoatp.BskyAgent, arxiv_id, summary_text):
+def upload_first_page_to_bluesky(api: nanoatp.BskyAgent, arxiv_id: str, summary_text: str) -> dict[str, Any]:
     with tempfile.TemporaryDirectory() as tmp_dir:
         pdf_filename = utils.download_arxiv_pdf(arxiv_id, tmp_dir)
         first_page_filename = utils.pdf_to_png(pdf_filename)
         if os.path.isfile(first_page_filename):
             return api.uploadImage(first_page_filename, summary_text)
-    return None
+    return {}
 
 
-def post_to_bluesky_first_page(api: nanoatp.BskyAgent, df, i, is_new, arxiv_id, updated, title, summary_texts, authors, score, num_comments, count, primary_category, categories):
+def post_to_bluesky_first_page(api: nanoatp.BskyAgent, df: pd.DataFrame, i: int, is_new: bool, arxiv_id: str, updated: str, title: str, summary_texts: list[str], authors: list[str], score: int, num_comments: int, count: int, primary_category: str, categories: list[str]):
     text, summary_text = utils.generate_first_page(df, i, is_new, arxiv_id, updated, title, summary_texts, authors, score, num_comments, count, primary_category, categories)
     images = []
     image = upload_first_page_to_bluesky(api, arxiv_id, utils.strip_tweet(summary_text, 300))
     images.append(image) if image else None
-    parent_post = None
+    parent_post: dict[str, str] = {}
     try:
         embed = {"$type": "app.bsky.embed.images#main", "images": images}
         record = {"text": utils.strip_tweet(text, 300), "embed": embed}
@@ -40,7 +42,7 @@ def post_to_bluesky_first_page(api: nanoatp.BskyAgent, df, i, is_new, arxiv_id, 
     return parent_post
 
 
-def post_to_bluesky_link(api: nanoatp.BskyAgent, root_post, parent_post, arxiv_id, title):
+def post_to_bluesky_link(api: nanoatp.BskyAgent, root_post: dict[str, str], parent_post: dict[str, str], arxiv_id: str, title: str):
     uri = f"https://twitter.com/search?q=arxiv.org%2Fabs%2F{arxiv_id}"
     text = f"Twitter Search: {uri}"
     try:
@@ -56,7 +58,7 @@ def post_to_bluesky_link(api: nanoatp.BskyAgent, root_post, parent_post, arxiv_i
     return parent_post
 
 
-def post_to_bluesky_posts(api: nanoatp.BskyAgent, root_post, parent_post, arxiv_id, df):
+def post_to_bluesky_posts(api: nanoatp.BskyAgent, root_post: dict[str, str], parent_post: dict[str, str], arxiv_id: str, df: pd.DataFrame):
     for i, (id, score, num_comments, created_utc, title, selftext) in enumerate(zip(df["id"], df["score"], df["num_comments"], df["created_utc"], df["title"], df["selftext"])):
         stats_md = f"{score} Upvotes, {num_comments} Comments"
         created_at_md = datetime.fromtimestamp(created_utc).strftime("%d %b %Y")
@@ -76,16 +78,16 @@ def post_to_bluesky_posts(api: nanoatp.BskyAgent, root_post, parent_post, arxiv_
     return parent_post
 
 
-def upload_html_to_bluesky(api, filename, html_text, alt_text):
+def upload_html_to_bluesky(api: nanoatp.BskyAgent, filename: str, html_text: str, alt_text: str) -> dict[str, Any]:
     with tempfile.TemporaryDirectory() as tmp_dir:
         abs_path = os.path.join(tmp_dir, filename)
         abs_path = utils.html_to_image(html_text, abs_path)
         if os.path.isfile(abs_path):
             return api.uploadImage(abs_path, alt_text)
-    return None
+    return {}
 
 
-def post_to_bluesky_trans(api: nanoatp.BskyAgent, root_post, parent_post, arxiv_id, title, authors, summary_texts, trans_texts):
+def post_to_bluesky_trans(api: nanoatp.BskyAgent, root_post: dict[str, str], parent_post: dict[str, str], arxiv_id: str, title: str, authors: list[str], summary_texts: list[str], trans_texts: list[str]) -> dict[str, str]:
     html_text = generatehtml.generate_trans_html(arxiv_id, title, authors, trans_texts, summary_texts)
     trans_text = "".join(trans_texts)
     images = []
@@ -98,12 +100,13 @@ def post_to_bluesky_trans(api: nanoatp.BskyAgent, root_post, parent_post, arxiv_
         rt = nanoatp.RichText(record["text"])
         rt.detectFacets(api)
         record.update({"facets": rt.facets}) if len(rt.facets) > 0 else None
-        parent_post = api.post(record)
+        return api.post(record)
     except Exception as e:
         print(e)
+    return {}
 
 
-def post_to_bluesky_ranking(api: nanoatp.BskyAgent, dlc, df):
+def post_to_bluesky_ranking(api: nanoatp.BskyAgent, dlc: deeplcache.DeepLCache, df: pd.DataFrame) -> dict[str, str]:
     title = f"Top {len(df)} most popular arXiv papers in the last 7 days"
     date = datetime.now(timezone.utc).strftime("%d %b %Y")
     images = []
@@ -127,21 +130,27 @@ def post_to_bluesky_ranking(api: nanoatp.BskyAgent, dlc, df):
         return api.post(record)
     except Exception as e:
         print(e)
-        return None
+    return {}
 
 
-def post_to_bluesky(api: nanoatp.BskyAgent, dlc, df, submission_df):
+def post_to_bluesky(api: nanoatp.BskyAgent, dlc: deeplcache.DeepLCache, df: pd.DataFrame, submission_df: pd.DataFrame):
     df = df[::-1]  # reverse order
     twenty_three_hours_ago = datetime.now(timezone.utc) - timedelta(hours=23)
     seg = pysbd.Segmenter(language="en", clean=False)
     for i, (arxiv_id, updated, title, summary, authors, primary_category, categories, score, num_comments, count) in enumerate(zip(df["arxiv_id"], df["updated"], df["title"], df["summary"], df["authors"], df["primary_category"], df["categories"], df["score"], df["num_comments"], df["count"])):
-        trans_texts, trans_ts = dlc.get(arxiv_id, None)
+        trans = dlc.get(arxiv_id, None)
+        if trans is None:
+            continue
+        trans_texts, trans_ts = trans
         # only post new papers
         if not (twenty_three_hours_ago < datetime.fromisoformat(trans_ts)):
             continue
-        summary_texts = seg.segment(summary.replace("\n", " ")[:2000])
+        segs = seg.segment(summary.replace("\n", " ")[:2000])
+        summary_texts: list[str] = [str(seg) for seg in segs] if type(segs) is list else [segs] if type(segs) is str else []
         is_new = True
         parent_post = post_to_bluesky_first_page(api, df, i, is_new, arxiv_id, updated, title, summary_texts, authors, score, num_comments, count, primary_category, categories)
+        if parent_post is None:
+            continue
         root_post = parent_post
         time.sleep(1)
         parent_post = post_to_bluesky_link(api, root_post, parent_post, arxiv_id, title)
@@ -151,4 +160,4 @@ def post_to_bluesky(api: nanoatp.BskyAgent, dlc, df, submission_df):
         post_to_bluesky_trans(api, root_post, parent_post, arxiv_id, title, authors, summary_texts, trans_texts)
         print("post_to_bluesky: ", f"[{len(df)-i}/{len(df)}]")
         time.sleep(1)
-    post_to_bluesky_ranking(api, dlc, df)
+    return post_to_bluesky_ranking(api, dlc, df)

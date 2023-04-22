@@ -13,18 +13,17 @@ from datetime import datetime, timedelta, timezone
 
 import arxiv
 import deepl
+import deeplcache
 import nanoatp
 import pandas as pd
-import praw
-import pysbd
-import tweepy
-from google.cloud import storage
-import slack_sdk
-
 import postbluesky
-import deeplcache
 import postslack
 import posttwitter
+import praw
+import pysbd
+import slack_sdk
+import tweepy
+from google.cloud import storage
 
 ARXIV_URL_PATTERN = re.compile(r"https?://arxiv\.org/(abs|pdf)/([0-9]{4}\.[0-9]{4,6})(v[0-9]+)?(\.pdf)?")
 
@@ -98,7 +97,7 @@ def get_arxiv_contents(id_list: list[str], chunk_size=100):
     return pd.json_normalize([arxiv_result_to_dict(r) for r in rs])
 
 
-def filter_df(df: pd.DataFrame, top_n: int = 10, days: int = 365):
+def filter_df(df: pd.DataFrame, top_n=10, days=365):
     days_ago = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")  # noqa: F841
     return df.query("published > @days_ago").head(top_n).reset_index(drop=True)
 
@@ -111,7 +110,7 @@ def summarize(query: str):
     return paper_df, submission_df
 
 
-def translate_arxiv(dlc: deeplcache.DeepLCache, df, target_lang):
+def translate_arxiv(dlc: deeplcache.DeepLCache, df: pd.DataFrame, target_lang: str):
     seg = pysbd.Segmenter(language="en", clean=False)
     print("translate_arxiv: before: ", len(dlc.cache))
     print(dlc.translator.get_usage())
@@ -161,7 +160,7 @@ def main():
     dlc.save_to_gcs(gcs_bucket, "deepl_cache.json.gz")
 
     # post
-    postslack.post_to_slack(slack_api, slack_channel, dlc, filtered_df, submission_df)
+    postslack.post_to_slack(slack_api, slack_channel, dlc, filtered_df, submission_df)  # type: ignore
 
     postbluesky.post_to_bluesky(bluesky_api, dlc, filtered_df, submission_df)
 
