@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "arxiv-reddit-summary"
-version = "0.2.2"
-description = ""
+version = "0.2.3"
+description = "Summarize top 20 most popular arXiv papers on Reddit in the last 7 days and post them to Slack, Twitter and Bluesky."
 authors = ["Susumu OTA <1632335+susumuota@users.noreply.github.com>"]
 license = "MIT"
 readme = "README.md"
@@ -19,7 +19,7 @@ google-cloud-storage = "^2.8.0"
 deepl = "^1.14.0"
 pysbd = "^0.3.4"
 slack-sdk = "^3.21.1"
-nanoatp = "^0.3.1"
+nanoatp = "^0.3.2"
 
 
 [tool.poetry.group.dev.dependencies]

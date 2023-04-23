@@ -13,7 +13,7 @@ google-resumable-media==2.4.1 ; python_version >= "3.10" and python_version < "4
 googleapis-common-protos==1.59.0 ; python_version >= "3.10" and python_version < "4.0"
 idna==3.4 ; python_version >= "3.10" and python_version < "4"
 imgkit==1.2.3 ; python_version >= "3.10" and python_version < "4.0"
-nanoatp==0.3.1 ; python_version >= "3.10" and python_version < "4.0"
+nanoatp==0.3.2 ; python_version >= "3.10" and python_version < "4.0"
 numpy==1.24.2 ; python_version >= "3.10" and python_version < "4.0"
 oauthlib==3.2.2 ; python_version >= "3.10" and python_version < "4.0"
 pandas==2.0.0 ; python_version >= "3.10" and python_version < "4.0"
