@@ -106,27 +106,38 @@ def post_to_bluesky_trans(api: nanoatp.BskyAgent, root_post: dict[str, str], par
     return {}
 
 
+def generate_facets(text: str, patterns: dict[str, str]):
+    facets: list[dict[str, Any]] = []
+    for pattern, uri in patterns.items():
+        start = text.find(pattern)
+        if start == -1:
+            continue
+        end = start + len(pattern)
+        facets.append(
+            {
+                "$type": "app.bsky.richtext.facet",
+                "index": {"byteStart": start, "byteEnd": end},
+                "features": [{"$type": "app.bsky.richtext.facet#link", "uri": uri}],
+            }
+        )
+    facets.sort(key=lambda facet: facet["index"]["byteStart"])
+    return facets
+
+
 def post_to_bluesky_ranking(api: nanoatp.BskyAgent, dlc: deeplcache.DeepLCache, df: pd.DataFrame) -> dict[str, str]:
-    title = f"Top {len(df)} most popular arXiv papers in the last 7 days"
+    title = f"Top {len(df)} most popular arXiv papers in the last 7 days\n"
     date = datetime.now(timezone.utc).strftime("%d %b %Y")
-    images = []
     html_text = generatehtml.generate_top_n_html(title, date, df, dlc)
-    rev_df = df[::-1]
-    len_df = len(df)
-
-    def fmt(item):
-        return f"[{item[0]+1}/{len_df}] https://arxiv.org/abs/{item[1][0]}"
-
-    metadata = "\n".join(map(fmt, enumerate(zip(rev_df["arxiv_id"]))))
+    uris = list(map(lambda item: [f"{item[0]+1}/{len(df)}", f"https://arxiv.org/abs/{item[1][0]}"], enumerate(zip(df[::-1]["arxiv_id"]))))
+    metadata = "\n".join(map(lambda item: " ".join(item), uris))
     image = upload_html_to_bluesky(api, "top_n.jpg", html_text, utils.strip_tweet(metadata, 300))
+    images = []
     images.append(image) if image else None
-    text = title
+    text = title + " ".join(map(lambda item: f"[{item[0]}]", uris))
+    facets = generate_facets(text, dict(uris))
     try:
         embed = {"$type": "app.bsky.embed.images#main", "images": images}
-        record = {"text": utils.strip_tweet(text, 300), "embed": embed}
-        rt = nanoatp.RichText(record["text"])
-        rt.detectFacets(api)
-        record.update({"facets": rt.facets}) if len(rt.facets) > 0 else None
+        record = {"text": text, "facets": facets, "embed": embed}
         return api.post(record)
     except Exception as e:
         print(e)
