@@ -1,6 +1,6 @@
 # arXiv Reddit Summary
 
-Summarize top 10 most popular arXiv papers on Reddit in the last 7 days and post them to Slack, Twitter and Bluesky.
+Summarize top 20 most popular arXiv papers on Reddit in the last 7 days and post them to Slack, Twitter and Bluesky.
 
 ## Demo
 
@@ -77,7 +77,7 @@ Application settings.
 # export ATP_IDENTIFIER="secret info"
 # export ATP_PASSWORD="secret info"
 
-export NOTIFY_TOP_N="10"       # 20 on production env
+export NOTIFY_TOP_N="20"      # 20 on production env
 export SLACK_CHANNEL="#test"  # #anywhere on production env
 ```
 
@@ -424,7 +424,7 @@ docker images
 Change parameters for production env.
 
 ```sh
-export NOTIFY_TOP_N="10"          # 5 on development env
+export NOTIFY_TOP_N="20"          # 10 on development env
 export SLACK_CHANNEL="#test"      # #test on development env
 ```
 
