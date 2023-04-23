@@ -3,7 +3,7 @@
 # SPDX-FileCopyrightText: 2022 Susumu OTA <1632335+susumuota@users.noreply.github.com>
 # SPDX-License-Identifier: MIT
 
-export NOTIFY_TOP_N="10"
+export NOTIFY_TOP_N="20"
 export SLACK_CHANNEL="#test"
 
 export PROJECT_ID="arxiv-summary-1"

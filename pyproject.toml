@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "arxiv-reddit-summary"
-version = "0.1.0"
+version = "0.2.2"
 description = ""
 authors = ["Susumu OTA <1632335+susumuota@users.noreply.github.com>"]
 license = "MIT"
