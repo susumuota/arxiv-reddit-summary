@@ -44,9 +44,9 @@ def post_to_bluesky_first_page(api: nanoatp.BskyAgent, df: pd.DataFrame, i: int,
 
 def post_to_bluesky_link(api: nanoatp.BskyAgent, root_post: dict[str, str], parent_post: dict[str, str], arxiv_id: str, title: str):
     uri = f"https://twitter.com/search?q=arxiv.org%2Fabs%2F{arxiv_id}"
-    text = f"Twitter Search: {uri}"
+    text = f"Twitter Search\n{uri}"
     try:
-        external = {"$type": "app.bsky.embed.external#external", "uri": uri, "title": "Twitter Search", "description": title}
+        external = {"$type": "app.bsky.embed.external#external", "uri": uri, "title": title, "description": f"arxiv.org/abs/{arxiv_id} - Twitter Search / Twitter"}
         embed = {"$type": "app.bsky.embed.external#main", "external": external}
         record = {"text": utils.strip_tweet(text, 300), "reply": {"root": root_post, "parent": parent_post}, "embed": embed}
         rt = nanoatp.RichText(record["text"])
