@@ -60,7 +60,7 @@ def generate_first_page(df: pd.DataFrame, i: int, is_new: bool, arxiv_id: str, u
     new_md = "🆕" if is_new else ""
     authors_md = ", ".join(authors)
     categories_md = avoid_auto_link(" | ".join([primary_category] + [c for c in categories if c != primary_category and re.match(r"\w+\.\w+$", c)]))
-    stats_md = f"{score} Upvotes, {num_comments} Comments, {count} Posts"
+    stats_md = f"{score} Likes, {num_comments} Comments, {count} Posts"
     updated_md = dateutil.parser.isoparse(updated).strftime("%d %b %Y")
     title_md = title
     abs_md = f"https://arxiv.org/abs/{arxiv_id}"
