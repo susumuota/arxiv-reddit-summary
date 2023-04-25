@@ -20,6 +20,7 @@ deepl = "^1.14.0"
 pysbd = "^0.3.4"
 slack-sdk = "^3.21.1"
 nanoatp = "^0.3.2"
+requests = "^2.28.2"
 
 
 [tool.poetry.group.dev.dependencies]

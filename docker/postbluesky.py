@@ -58,14 +58,13 @@ def post_to_bluesky_link(api: nanoatp.BskyAgent, root_post: dict[str, str], pare
     return parent_post
 
 
-def post_to_bluesky_posts(api: nanoatp.BskyAgent, root_post: dict[str, str], parent_post: dict[str, str], arxiv_id: str, df: pd.DataFrame):
-    for i, (id, score, num_comments, created_utc, title, selftext) in enumerate(zip(df["id"], df["score"], df["num_comments"], df["created_utc"], df["title"], df["selftext"])):
-        stats_md = f"{score} Upvotes, {num_comments} Comments"
-        created_at_md = datetime.fromtimestamp(created_utc).strftime("%d %b %Y")
-        url_md = f"https://reddit.com/{id}"
-        text = f"({i+1}/{len(df)}) {stats_md}, {created_at_md}\n{url_md}\n"
+def post_to_bluesky_posts(api: nanoatp.BskyAgent, root_post: dict[str, str], parent_post: dict[str, str], df: pd.DataFrame):
+    for i, (id, score, num_comments, created_at, title, description) in enumerate(zip(df["id"], df["score"], df["num_comments"], df["created_at"], df["title"], df["description"])):
+        stats_md = f"{score} Likes, {num_comments} Comments"
+        created_at_md = datetime.fromtimestamp(created_at).strftime("%d %b %Y")
+        text = f"({i+1}/{len(df)}) {stats_md}, {created_at_md}\n{id}\n"
         try:
-            external = {"$type": "app.bsky.embed.external#external", "uri": url_md, "title": title, "description": selftext}
+            external = {"$type": "app.bsky.embed.external#external", "uri": id, "title": title, "description": description}
             embed = {"$type": "app.bsky.embed.external#main", "external": external}
             record = {"text": utils.strip_tweet(text, 300), "reply": {"root": root_post, "parent": parent_post}, "embed": embed}
             rt = nanoatp.RichText(record["text"])
@@ -144,7 +143,7 @@ def post_to_bluesky_ranking(api: nanoatp.BskyAgent, dlc: deeplcache.DeepLCache, 
     return {}
 
 
-def post_to_bluesky(api: nanoatp.BskyAgent, dlc: deeplcache.DeepLCache, df: pd.DataFrame, submission_df: pd.DataFrame):
+def post_to_bluesky(api: nanoatp.BskyAgent, dlc: deeplcache.DeepLCache, df: pd.DataFrame, document_df: pd.DataFrame):
     df = df[::-1]  # reverse order
     twenty_three_hours_ago = datetime.now(timezone.utc) - timedelta(hours=23)
     seg = pysbd.Segmenter(language="en", clean=False)
@@ -166,8 +165,8 @@ def post_to_bluesky(api: nanoatp.BskyAgent, dlc: deeplcache.DeepLCache, df: pd.D
         time.sleep(1)
         parent_post = post_to_bluesky_link(api, root_post, parent_post, arxiv_id, title)
         time.sleep(1)
-        top_n_submissions = submission_df[submission_df["arxiv_id"].apply(lambda ids: arxiv_id in ids)].head(5)
-        parent_post = post_to_bluesky_posts(api, root_post, parent_post, arxiv_id, top_n_submissions)
+        top_n_documents = document_df[document_df["arxiv_id"].apply(lambda ids: arxiv_id in ids)].head(5)
+        parent_post = post_to_bluesky_posts(api, root_post, parent_post, top_n_documents)
         post_to_bluesky_trans(api, root_post, parent_post, arxiv_id, title, authors, summary_texts, trans_texts)
         print("post_to_bluesky: ", f"[{len(df)-i}/{len(df)}]")
         time.sleep(1)

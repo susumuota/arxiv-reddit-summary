@@ -51,12 +51,11 @@ def post_to_twitter_link(api_v2: tweepy.Client, prev_tweet_id: str, arxiv_id: st
     return prev_tweet_id
 
 
-def post_to_twitter_tweets(api_v2: tweepy.Client, prev_tweet_id: str, arxiv_id: str, df: pd.DataFrame) -> str:
-    for i, (id, score, num_comments, created_utc) in enumerate(zip(df["id"], df["score"], df["num_comments"], df["created_utc"])):
-        stats_md = f"{score} Upvotes, {num_comments} Comments"
-        created_at_md = datetime.fromtimestamp(created_utc).strftime("%d %b %Y")
-        url_md = f"https://reddit.com/{id}"
-        text = f"({i+1}/{len(df)}) {stats_md}, {created_at_md}\n{url_md}\n"
+def post_to_twitter_tweets(api_v2: tweepy.Client, prev_tweet_id: str, df: pd.DataFrame) -> str:
+    for i, (id, score, num_comments, created_at) in enumerate(zip(df["id"], df["score"], df["num_comments"], df["created_at"])):
+        stats_md = f"{score} Likes, {num_comments} Comments"
+        created_at_md = datetime.fromtimestamp(created_at).strftime("%d %b %Y")
+        text = f"({i+1}/{len(df)}) {stats_md}, {created_at_md}\n{id}\n"
         try:
             response = api_v2.create_tweet(text=utils.strip_tweet(text, 280), user_auth=True, in_reply_to_tweet_id=prev_tweet_id)
             prev_tweet_id = response.data["id"] if type(response) is tweepy.Response and not response.errors else ""
@@ -109,7 +108,7 @@ def post_to_twitter_trans(api_v1: tweepy.API, api_v2: tweepy.Client, prev_tweet_
         print(e)
 
 
-def post_to_twitter(api_v1: tweepy.API, api_v2: tweepy.Client, dlc: deeplcache.DeepLCache, df: pd.DataFrame, submission_df: pd.DataFrame):
+def post_to_twitter(api_v1: tweepy.API, api_v2: tweepy.Client, dlc: deeplcache.DeepLCache, df: pd.DataFrame, document_df: pd.DataFrame):
     df = df[::-1]  # reverse order
     twenty_three_hours_ago = datetime.now(timezone.utc) - timedelta(hours=23)
     seg = pysbd.Segmenter(language="en", clean=False)
@@ -132,8 +131,8 @@ def post_to_twitter(api_v1: tweepy.API, api_v2: tweepy.Client, dlc: deeplcache.D
         time.sleep(1)
         if not prev_tweet_id:
             continue
-        top_n_submissions = submission_df[submission_df["arxiv_id"].apply(lambda ids: arxiv_id in ids)].head(5)
-        prev_tweet_id = post_to_twitter_tweets(api_v2, prev_tweet_id, arxiv_id, top_n_submissions)
+        top_n_documents = document_df[document_df["arxiv_id"].apply(lambda ids: arxiv_id in ids)].head(5)
+        prev_tweet_id = post_to_twitter_tweets(api_v2, prev_tweet_id, top_n_documents)
         post_to_twitter_trans(api_v1, api_v2, prev_tweet_id, arxiv_id, title, authors, summary_texts, trans_texts)
         print("post_to_twitter: ", f"[{len(df)-i}/{len(df)}]")
         time.sleep(1)

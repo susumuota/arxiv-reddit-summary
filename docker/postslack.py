@@ -22,7 +22,7 @@ def post_to_slack_header(api: slack_sdk.WebClient, channel: str, df: pd.DataFram
 def generate_slack_title_blocks(df: pd.DataFrame, i: int, is_new: bool, title: str, score: int, num_comments: int, count: int, primary_category: str, categories: list[str], updated: str, first_summary: str):
     new_md = ":new: " if is_new else ""
     title_md = utils.strip(title, 200)
-    stats_md = f"_*{score}* Upvotes, {num_comments} Comments, {count} Posts_"
+    stats_md = f"_*{score}* Likes, {num_comments} Comments, {count} Posts_"
     categories_md = utils.avoid_auto_link(" | ".join([primary_category] + [c for c in categories if c != primary_category and re.match(r"\w+\.\w+$", c)]))
     updated_md = dateutil.parser.isoparse(updated).strftime("%d %b %Y")
     return [{"type": "section", "text": {"type": "mrkdwn", "text": f"[{len(df)-i}/{len(df)}] {new_md}*{title_md}*\n{stats_md}, {categories_md}, {updated_md}\n{first_summary}"}}]
@@ -72,18 +72,18 @@ def post_to_slack_authors(api: slack_sdk.WebClient, channel: str, title: str, ts
     return api.chat_postMessage(channel=channel, text=title_md, blocks=blocks, thread_ts=ts)
 
 
-def post_to_slack_submissions(api: slack_sdk.WebClient, channel: str, ts: str, df: pd.DataFrame):
-    for i, (id, score, num_comments, created_utc) in enumerate(zip(df["id"], df["score"], df["num_comments"], df["created_utc"])):
+def post_to_slack_documents(api: slack_sdk.WebClient, channel: str, ts: str, df: pd.DataFrame):
+    for i, (id, score, num_comments, created_at) in enumerate(zip(df["id"], df["score"], df["num_comments"], df["created_at"])):
         blocks = []
-        stats_md = f"_*{score}* Upvotes, {num_comments} Comments_"
-        created_at_md = datetime.fromtimestamp(created_utc).strftime("%d %b %Y")
-        url_md = f"<https://reddit.com/{id}|{created_at_md}>"
+        stats_md = f"_*{score}* Likes, {num_comments} Comments_"
+        created_at_md = datetime.fromtimestamp(created_at).strftime("%d %b %Y")
+        url_md = f"<{id}|{created_at_md}>"
         blocks = [{"type": "section", "text": {"type": "mrkdwn", "text": f"({i+1}/{len(df)}) {stats_md}, {url_md}\n"}}]
         api.chat_postMessage(channel=channel, text=url_md, thread_ts=ts, blocks=blocks)
         time.sleep(1)
 
 
-def post_to_slack(api: slack_sdk.WebClient, channel: str, dlc: deeplcache.DeepLCache, df: pd.DataFrame, submission_df: pd.DataFrame):
+def post_to_slack(api: slack_sdk.WebClient, channel: str, dlc: deeplcache.DeepLCache, df: pd.DataFrame, document_df: pd.DataFrame):
     df = df[::-1]  # reverse order
     post_to_slack_header(api, channel, df)
     time.sleep(1)
@@ -100,6 +100,6 @@ def post_to_slack(api: slack_sdk.WebClient, channel: str, dlc: deeplcache.DeepLC
             time.sleep(1)
         post_to_slack_authors(api, channel, title, ts, authors, comment, arxiv_id)
         time.sleep(1)
-        top_n_submissions = submission_df[submission_df["arxiv_id"].apply(lambda ids: arxiv_id in ids)].head(5)
-        post_to_slack_submissions(api, channel, ts, top_n_submissions)
+        top_n_documents = document_df[document_df["arxiv_id"].apply(lambda ids: arxiv_id in ids)].head(5)
+        post_to_slack_documents(api, channel, ts, top_n_documents)
         print("post_to_slack: ", f"[{len(df)-i}/{len(df)}]")

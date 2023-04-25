@@ -21,6 +21,7 @@ import postslack
 import posttwitter
 import praw
 import pysbd
+import requests
 import slack_sdk
 import tweepy
 from google.cloud import storage
@@ -34,25 +35,52 @@ def parse_arxiv_ids(text: str) -> list[str]:
 
 
 def submission_to_dict(submission: praw.reddit.Submission):
+    """https://praw.readthedocs.io/en/stable/code_overview/models/submission.html"""
     return {
-        "id": submission.id,
+        "id": f"https://reddit.com/{submission.id}",
         "score": submission.score,
         "num_comments": submission.num_comments,
-        "created_utc": submission.created_utc,
+        "created_at": submission.created_utc,
         "arxiv_id": parse_arxiv_ids(submission.selftext),
         "title": submission.title,
-        "selftext": submission.selftext,
+        "description": submission.selftext,
     }
 
 
 def search_reddit(query: str, sort="relevance", syntax="lucene", time_filter="all", limit: int | None = None):
-    # https://praw.readthedocs.io/en/latest/code_overview/models/subreddit.html#praw.models.Subreddit.search
+    """https://praw.readthedocs.io/en/latest/code_overview/models/subreddit.html#praw.models.Subreddit.search"""
     rs = list(praw.Reddit().subreddit("all").search(query=query, sort=sort, syntax=syntax, time_filter=time_filter, limit=limit))
     return pd.json_normalize([submission_to_dict(r) for r in rs])
 
 
-def get_arxiv_stats(submission_df: pd.DataFrame):
-    return submission_df.explode("arxiv_id").groupby("arxiv_id").agg(score=("score", "sum"), num_comments=("num_comments", "sum"), count=("id", "count"), submission_id=("id", pd.Series.to_list)).sort_values(by=["score", "num_comments", "count"], ascending=False).reset_index()
+def hit_to_dict(hit: dict):
+    """https://hn.algolia.com/api"""
+    return {
+        "id": f"https://news.ycombinator.com/item?id={hit['objectID']}",
+        "score": hit["points"],
+        "num_comments": hit["num_comments"],
+        "created_at": hit["created_at_i"],
+        "arxiv_id": parse_arxiv_ids(hit["url"]),
+        "title": hit["title"],
+        "description": hit["url"],
+    }
+
+
+def search_hackernews(query: str, attribute="", days=0, limit: int | None = None):
+    """https://hn.algolia.com/api"""
+    params = {"query": query}
+    params.update({"restrictSearchableAttributes": attribute}) if attribute else None
+    if days > 0:
+        days_ago = int((datetime.now() - timedelta(days=days)).timestamp())
+        params.update({"numericFilters": f"created_at_i>{days_ago}"})
+    params.update({"hitsPerPage": str(limit)}) if limit else None
+    response = requests.get("https://hn.algolia.com/api/v1/search", params=params)
+    json = response.json()
+    return pd.json_normalize([hit_to_dict(hit) for hit in json["hits"]])
+
+
+def get_arxiv_stats(document_df: pd.DataFrame):
+    return document_df.explode("arxiv_id").groupby("arxiv_id").agg(score=("score", "sum"), num_comments=("num_comments", "sum"), count=("id", "count"), document_id=("id", pd.Series.to_list)).sort_values(by=["score", "num_comments", "count"], ascending=False).reset_index()
 
 
 def arxiv_result_to_dict(r: arxiv.Result):
@@ -102,12 +130,14 @@ def filter_df(df: pd.DataFrame, top_n=10, days=365):
     return df.query("published > @days_ago").head(top_n).reset_index(drop=True)
 
 
-def summarize(query: str):
-    submission_df = search_reddit(query, sort="top", time_filter="week", limit=100)
-    stats_df = get_arxiv_stats(submission_df)
+def summarize(query):
+    reddit_document_df = search_reddit(f"selftext:{query}", sort="top", time_filter="week", limit=100)
+    hackernews_document_df = search_hackernews(query, attribute="url", days=7, limit=100)
+    document_df = pd.concat([reddit_document_df, hackernews_document_df], ignore_index=True).sort_values(by=["score", "num_comments"], ascending=False).reset_index(drop=True)
+    stats_df = get_arxiv_stats(document_df)
     contents_df = get_arxiv_contents(stats_df["arxiv_id"].tolist(), chunk_size=100)
     paper_df = pd.merge(stats_df, contents_df, on="arxiv_id")
-    return paper_df, submission_df
+    return paper_df, document_df
 
 
 def translate_arxiv(dlc: deeplcache.DeepLCache, df: pd.DataFrame, target_lang: str):
@@ -125,7 +155,7 @@ def translate_arxiv(dlc: deeplcache.DeepLCache, df: pd.DataFrame, target_lang: s
 
 def main():
     # settings
-    query = "selftext:arxiv.org"
+    query = "arxiv.org"
     filter_days = 365
     deepl_target_lang = "JA"
     deepl_expire_days = 30
@@ -143,7 +173,7 @@ def main():
     bluesky_api.login(os.getenv("ATP_IDENTIFIER"), os.getenv("ATP_PASSWORD"))  # type: ignore
 
     # search reddit and measure popularity
-    paper_df, submission_df = summarize(query)
+    paper_df, document_df = summarize(query)
 
     # filter by days
     filtered_df = filter_df(paper_df, top_n=notify_top_n, days=filter_days)
@@ -160,11 +190,11 @@ def main():
     dlc.save_to_gcs(gcs_bucket, "deepl_cache.json.gz")
 
     # post
-    postslack.post_to_slack(slack_api, slack_channel, dlc, filtered_df, submission_df)  # type: ignore
+    postslack.post_to_slack(slack_api, slack_channel, dlc, filtered_df, document_df)  # type: ignore
 
-    postbluesky.post_to_bluesky(bluesky_api, dlc, filtered_df, submission_df)
+    postbluesky.post_to_bluesky(bluesky_api, dlc, filtered_df, document_df)
 
-    posttwitter.post_to_twitter(tweepy_api_v1, tweepy_api_v2, dlc, filtered_df, submission_df)
+    posttwitter.post_to_twitter(tweepy_api_v1, tweepy_api_v2, dlc, filtered_df, document_df)
 
 
 if __name__ == "__main__":
