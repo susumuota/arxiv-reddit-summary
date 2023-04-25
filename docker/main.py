@@ -26,6 +26,7 @@ import slack_sdk
 import tweepy
 from google.cloud import storage
 
+
 ARXIV_URL_PATTERN = re.compile(r"https?://arxiv\.org/(abs|pdf)/([0-9]{4}\.[0-9]{4,6})(v[0-9]+)?(\.pdf)?")
 
 
@@ -131,8 +132,10 @@ def filter_df(df: pd.DataFrame, top_n=10, days=365):
 
 
 def summarize(query):
-    reddit_document_df = search_reddit(f"selftext:{query}", sort="top", time_filter="week", limit=100)
-    hackernews_document_df = search_hackernews(query, attribute="url", days=7, limit=100)
+    # reddit_document_df = search_reddit(f"selftext:{query}", sort="top", time_filter="week", limit=100)
+    reddit_document_df = search_reddit(f"selftext:{query}", sort="top", time_filter="month", limit=300)
+    # hackernews_document_df = search_hackernews(query, attribute="url", days=7, limit=100)
+    hackernews_document_df = search_hackernews(query, attribute="url", days=30, limit=300)
     document_df = pd.concat([reddit_document_df, hackernews_document_df], ignore_index=True).sort_values(by=["score", "num_comments"], ascending=False).reset_index(drop=True)
     stats_df = get_arxiv_stats(document_df)
     contents_df = get_arxiv_contents(stats_df["arxiv_id"].tolist(), chunk_size=100)

@@ -14,7 +14,7 @@ import utils
 
 
 def post_to_slack_header(api: slack_sdk.WebClient, channel: str, df: pd.DataFrame):
-    text = f"Top {len(df)} most popular arXiv papers in the last 7 days"
+    text = f"Top {len(df)} most popular arXiv papers in the last 30 days"
     blocks = [{"type": "header", "text": {"type": "plain_text", "text": text}}]
     return api.chat_postMessage(channel=channel, text=text, blocks=blocks)
 

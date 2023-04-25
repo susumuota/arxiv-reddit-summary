@@ -124,7 +124,7 @@ def generate_facets(text: str, patterns: dict[str, str]):
 
 
 def post_to_bluesky_ranking(api: nanoatp.BskyAgent, dlc: deeplcache.DeepLCache, df: pd.DataFrame) -> dict[str, str]:
-    title = f"Top {len(df)} most popular arXiv papers in the last 7 days\n"
+    title = f"Top {len(df)} most popular arXiv papers in the last 30 days\n"
     date = datetime.now(timezone.utc).strftime("%d %b %Y")
     html_text = generatehtml.generate_top_n_html(title, date, df, dlc)
     uris = list(map(lambda item: [f"{item[0]+1}/{len(df)}", f"https://arxiv.org/abs/{item[1][0]}"], enumerate(zip(df[::-1]["arxiv_id"]))))

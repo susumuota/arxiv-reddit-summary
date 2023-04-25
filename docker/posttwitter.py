@@ -76,7 +76,7 @@ def upload_html_to_twitter(api_v1: tweepy.API, filename: str, html_text: str):
 
 
 def post_to_twitter_ranking(api_v1: tweepy.API, api_v2: tweepy.Client, dlc: deeplcache.DeepLCache, df: pd.DataFrame):
-    title = f"Top {len(df)} most popular arXiv papers in the last 7 days"
+    title = f"Top {len(df)} most popular arXiv papers in the last 30 days"
     date = datetime.now(timezone.utc).strftime("%d %b %Y")
     media_ids = []
     html_text = generatehtml.generate_top_n_html(title, date, df, dlc)
