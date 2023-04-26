@@ -2,14 +2,11 @@
 # SPDX-License-Identifier: MIT
 
 import os
-import re
 import subprocess
 import unicodedata
 from shlex import quote
 
-import dateutil.parser
 import imgkit
-import pandas as pd
 
 
 def download_arxiv_pdf(arxiv_id: str, tmp_dir: str):
@@ -53,19 +50,6 @@ def strip_tweet(text: str, max_length=280, dots="..."):
         buf.append(c)
         count += width
     return text
-
-
-def generate_first_page(df: pd.DataFrame, i: int, is_new: bool, arxiv_id: str, updated: str, title: str, summary_texts: list[str], authors: list[str], score: int, num_comments: int, count: int, primary_category: str, categories: list[str]):
-    summary_text = " ".join(summary_texts)
-    new_md = "🆕" if is_new else ""
-    authors_md = ", ".join(authors)
-    categories_md = avoid_auto_link(" | ".join([primary_category] + [c for c in categories if c != primary_category and re.match(r"\w+\.\w+$", c)]))
-    stats_md = f"{score} Likes, {num_comments} Comments, {count} Posts"
-    updated_md = dateutil.parser.isoparse(updated).strftime("%d %b %Y")
-    title_md = title
-    abs_md = f"https://arxiv.org/abs/{arxiv_id}"
-    text = f"[{len(df)-i}/{len(df)}] {stats_md}\n{abs_md} {categories_md}, {updated_md}\n\n{new_md}{title_md}\n\n{authors_md}"
-    return text, summary_text
 
 
 def avoid_auto_link(text: str):

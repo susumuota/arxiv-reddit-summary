@@ -66,8 +66,10 @@ def post_to_slack_authors(api: slack_sdk.WebClient, channel: str, title: str, ts
     comment_md = f"\n\n*Comments*: {utils.strip(comment, 1000)}\n\n" if comment else ""
     abs_md = f"<https://arxiv.org/abs/{arxiv_id}|abs>"
     pdf_md = f"<https://arxiv.org/pdf/{arxiv_id}.pdf|pdf>"
-    tweets_md = f"<https://twitter.com/search?q=arxiv.org%2Fabs%2F{arxiv_id}%20OR%20arxiv.org%2Fpdf%2F{arxiv_id}.pdf|Tweets>"
-    blocks = [{"type": "section", "text": {"type": "mrkdwn", "text": f"*Links*: {abs_md}, {pdf_md}, {tweets_md}\n\n*Authors*: {authors_md}{comment_md}"}}]
+    twitter_md = f"<https://twitter.com/search?q=arxiv.org%2Fabs%2F{arxiv_id}%20OR%20arxiv.org%2Fpdf%2F{arxiv_id}.pdf|Twitter>"
+    reddit_md = f"<https://www.reddit.com/search/?q=%22{arxiv_id}%22&sort=top|Reddit>"
+    hackernews_md = f"<https://hn.algolia.com/?query=%22{arxiv_id}%22&type=all|HackerNews>"
+    blocks = [{"type": "section", "text": {"type": "mrkdwn", "text": f"*Links*: {abs_md}, {pdf_md}, {twitter_md}, {reddit_md}, {hackernews_md}\n\n*Authors*: {authors_md}{comment_md}"}}]
     title_md = utils.strip(title, 200)
     return api.chat_postMessage(channel=channel, text=title_md, blocks=blocks, thread_ts=ts)
 

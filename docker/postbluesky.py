@@ -2,17 +2,37 @@
 # SPDX-License-Identifier: MIT
 
 import os
+import re
 import tempfile
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+import dateutil.parser
 import deeplcache
 import generatehtml
 import nanoatp
 import pandas as pd
 import pysbd
 import utils
+
+
+def generate_facets(text: str, patterns: list[tuple[str, str]]):
+    facets: list[dict[str, Any]] = []
+    for pattern, uri in patterns:
+        start = text.find(pattern)
+        if start == -1:
+            continue
+        end = start + len(pattern)
+        facets.append(
+            {
+                "$type": "app.bsky.richtext.facet",
+                "index": {"byteStart": start, "byteEnd": end},
+                "features": [{"$type": "app.bsky.richtext.facet#link", "uri": uri}],
+            }
+        )
+    facets.sort(key=lambda facet: facet["index"]["byteStart"])
+    return facets
 
 
 def upload_first_page_to_bluesky(api: nanoatp.BskyAgent, arxiv_id: str, summary_text: str) -> dict[str, Any]:
@@ -24,34 +44,52 @@ def upload_first_page_to_bluesky(api: nanoatp.BskyAgent, arxiv_id: str, summary_
     return {}
 
 
+def generate_bluesky_first_page(df: pd.DataFrame, i: int, is_new: bool, arxiv_id: str, updated: str, title: str, summary_texts: list[str], authors: list[str], score: int, num_comments: int, count: int, primary_category: str, categories: list[str]):
+    summary_text = " ".join(summary_texts)
+    new_md = "🆕" if is_new else ""
+    authors_md = ", ".join(authors)
+    categories_md = utils.avoid_auto_link(" | ".join([primary_category] + [c for c in categories if c != primary_category and re.match(r"\w+\.\w+$", c)]))
+    stats_md = f"{score} Likes, {num_comments} Comments, {count} Posts"
+    updated_md = dateutil.parser.isoparse(updated).strftime("%d %b %Y")
+    title_md = title
+    text = f"[{len(df)-i}/{len(df)}] {stats_md}\n{arxiv_id}, {categories_md}, {updated_md}\n\n{new_md}{title_md}\n\n{authors_md}"
+    return text, summary_text
+
+
 def post_to_bluesky_first_page(api: nanoatp.BskyAgent, df: pd.DataFrame, i: int, is_new: bool, arxiv_id: str, updated: str, title: str, summary_texts: list[str], authors: list[str], score: int, num_comments: int, count: int, primary_category: str, categories: list[str]):
-    text, summary_text = utils.generate_first_page(df, i, is_new, arxiv_id, updated, title, summary_texts, authors, score, num_comments, count, primary_category, categories)
+    first_page_text, summary_text = generate_bluesky_first_page(df, i, is_new, arxiv_id, updated, title, summary_texts, authors, score, num_comments, count, primary_category, categories)
     images = []
     image = upload_first_page_to_bluesky(api, arxiv_id, utils.strip_tweet(summary_text, 300))
     images.append(image) if image else None
     parent_post: dict[str, str] = {}
+    text = f"{first_page_text}"
+    patterns = [
+        (arxiv_id, f"https://arxiv.org/abs/{arxiv_id}"),
+    ]
+    facets = generate_facets(text, patterns)
+    embed = {"$type": "app.bsky.embed.images#main", "images": images}
+    record = {"text": utils.strip_tweet(text, 300), "facets": facets, "embed": embed}
     try:
-        embed = {"$type": "app.bsky.embed.images#main", "images": images}
-        record = {"text": utils.strip_tweet(text, 300), "embed": embed}
-        rt = nanoatp.RichText(record["text"])
-        rt.detectFacets(api)
-        record.update({"facets": rt.facets}) if len(rt.facets) > 0 else None
         parent_post = api.post(record)
     except Exception as e:
         print(e)
     return parent_post
 
 
-def post_to_bluesky_link(api: nanoatp.BskyAgent, root_post: dict[str, str], parent_post: dict[str, str], arxiv_id: str, title: str):
-    uri = f"https://twitter.com/search?q=arxiv.org%2Fabs%2F{arxiv_id}"
-    text = f"Twitter Search\n{uri}"
+def post_to_bluesky_link(api: nanoatp.BskyAgent, root_post: dict[str, str], parent_post: dict[str, str], arxiv_id: str, title: str, summary_texts: list[str]):
+    patterns = [
+        ("abs", f"https://arxiv.org/abs/{arxiv_id}"),
+        ("pdf", f"https://arxiv.org/pdf/{arxiv_id}.pdf"),
+        ("Twitter", f"https://twitter.com/search?q=arxiv.org%2Fabs%2F{arxiv_id}%20OR%20arxiv.org%2Fpdf%2F{arxiv_id}.pdf"),
+        ("Reddit", f"https://www.reddit.com/search/?q=%22{arxiv_id}%22&sort=top"),
+        ("Hacker News", f"https://hn.algolia.com/?query=%22{arxiv_id}%22&type=all"),
+    ]
+    text = "Links: " + ", ".join([p[0] for p in patterns])
+    facets = generate_facets(text, patterns)
+    external = {"$type": "app.bsky.embed.external#external", "uri": patterns[0][1], "title": title, "description": utils.strip_tweet(" ".join(summary_texts), 300)}
+    embed = {"$type": "app.bsky.embed.external#main", "external": external}
+    record = {"text": utils.strip_tweet(text, 300), "facets": facets, "reply": {"root": root_post, "parent": parent_post}, "embed": embed}
     try:
-        external = {"$type": "app.bsky.embed.external#external", "uri": uri, "title": title, "description": f"arxiv.org/abs/{arxiv_id} - Twitter Search / Twitter"}
-        embed = {"$type": "app.bsky.embed.external#main", "external": external}
-        record = {"text": utils.strip_tweet(text, 300), "reply": {"root": root_post, "parent": parent_post}, "embed": embed}
-        rt = nanoatp.RichText(record["text"])
-        rt.detectFacets(api)
-        record.update({"facets": rt.facets}) if len(rt.facets) > 0 else None
         parent_post = api.post(record)
     except Exception as e:
         print(e)
@@ -62,14 +100,14 @@ def post_to_bluesky_posts(api: nanoatp.BskyAgent, root_post: dict[str, str], par
     for i, (id, score, num_comments, created_at, title, description) in enumerate(zip(df["id"], df["score"], df["num_comments"], df["created_at"], df["title"], df["description"])):
         stats_md = f"{score} Likes, {num_comments} Comments"
         created_at_md = datetime.fromtimestamp(created_at).strftime("%d %b %Y")
-        text = f"({i+1}/{len(df)}) {stats_md}, {created_at_md}\n{id}\n"
+        link = "Reddit" if id.find("reddit.com") != -1 else "Hacker News" if id.find("news.ycombinator.com") != -1 else id
+        text = f"({i+1}/{len(df)}) {stats_md}, {created_at_md}, {link}"
+        patterns = [(link, id)]
+        facets = generate_facets(text, patterns)
+        external = {"$type": "app.bsky.embed.external#external", "uri": id, "title": title, "description": description}
+        embed = {"$type": "app.bsky.embed.external#main", "external": external}
+        record = {"text": utils.strip_tweet(text, 300), "facets": facets, "reply": {"root": root_post, "parent": parent_post}, "embed": embed}
         try:
-            external = {"$type": "app.bsky.embed.external#external", "uri": id, "title": title, "description": description}
-            embed = {"$type": "app.bsky.embed.external#main", "external": external}
-            record = {"text": utils.strip_tweet(text, 300), "reply": {"root": root_post, "parent": parent_post}, "embed": embed}
-            rt = nanoatp.RichText(record["text"])
-            rt.detectFacets(api)
-            record.update({"facets": rt.facets}) if len(rt.facets) > 0 else None
             parent_post = api.post(record)
         except Exception as e:
             print(e)
@@ -92,48 +130,29 @@ def post_to_bluesky_trans(api: nanoatp.BskyAgent, root_post: dict[str, str], par
     images = []
     image = upload_html_to_bluesky(api, f"{arxiv_id}.trans.jpg", html_text, utils.strip_tweet(trans_text, 300))
     images.append(image) if image else None
-    text = f"https://arxiv.org/abs/{arxiv_id}\n{trans_text}"
+    text = f"{arxiv_id}\n{trans_text}"
+    patterns = [(arxiv_id, f"https://arxiv.org/abs/{arxiv_id}")]
+    facets = generate_facets(text, patterns)
+    embed = {"$type": "app.bsky.embed.images#main", "images": images}
+    record = {"text": utils.strip_tweet(text, 300), "facets": facets, "reply": {"root": root_post, "parent": parent_post}, "embed": embed}
     try:
-        embed = {"$type": "app.bsky.embed.images#main", "images": images}
-        record = {"text": utils.strip_tweet(text, 300), "reply": {"root": root_post, "parent": parent_post}, "embed": embed}
-        rt = nanoatp.RichText(record["text"])
-        rt.detectFacets(api)
-        record.update({"facets": rt.facets}) if len(rt.facets) > 0 else None
         return api.post(record)
     except Exception as e:
         print(e)
     return {}
 
 
-def generate_facets(text: str, patterns: dict[str, str]):
-    facets: list[dict[str, Any]] = []
-    for pattern, uri in patterns.items():
-        start = text.find(pattern)
-        if start == -1:
-            continue
-        end = start + len(pattern)
-        facets.append(
-            {
-                "$type": "app.bsky.richtext.facet",
-                "index": {"byteStart": start, "byteEnd": end},
-                "features": [{"$type": "app.bsky.richtext.facet#link", "uri": uri}],
-            }
-        )
-    facets.sort(key=lambda facet: facet["index"]["byteStart"])
-    return facets
-
-
 def post_to_bluesky_ranking(api: nanoatp.BskyAgent, dlc: deeplcache.DeepLCache, df: pd.DataFrame) -> dict[str, str]:
     title = f"Top {len(df)} most popular arXiv papers in the last 30 days\n"
     date = datetime.now(timezone.utc).strftime("%d %b %Y")
     html_text = generatehtml.generate_top_n_html(title, date, df, dlc)
-    uris = list(map(lambda item: [f"{item[0]+1}/{len(df)}", f"https://arxiv.org/abs/{item[1][0]}"], enumerate(zip(df[::-1]["arxiv_id"]))))
+    uris = list(map(lambda item: (f"{item[0]+1}/{len(df)}", f"https://arxiv.org/abs/{item[1][0]}"), enumerate(zip(df[::-1]["arxiv_id"]))))
     metadata = "\n".join(map(lambda item: " ".join(item), uris))
     image = upload_html_to_bluesky(api, "top_n.jpg", html_text, utils.strip_tweet(metadata, 300))
     images = []
     images.append(image) if image else None
     text = title + " ".join(map(lambda item: f"[{item[0]}]", uris))
-    facets = generate_facets(text, dict(uris))
+    facets = generate_facets(text, uris)
     try:
         embed = {"$type": "app.bsky.embed.images#main", "images": images}
         record = {"text": text, "facets": facets, "embed": embed}
@@ -163,7 +182,7 @@ def post_to_bluesky(api: nanoatp.BskyAgent, dlc: deeplcache.DeepLCache, df: pd.D
             continue
         root_post = parent_post
         time.sleep(1)
-        parent_post = post_to_bluesky_link(api, root_post, parent_post, arxiv_id, title)
+        parent_post = post_to_bluesky_link(api, root_post, parent_post, arxiv_id, title, summary_texts)
         time.sleep(1)
         top_n_documents = document_df[document_df["arxiv_id"].apply(lambda ids: arxiv_id in ids)].head(5)
         parent_post = post_to_bluesky_posts(api, root_post, parent_post, top_n_documents)
