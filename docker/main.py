@@ -37,12 +37,14 @@ def parse_arxiv_ids(text: str) -> list[str]:
 
 def submission_to_dict(submission: praw.reddit.Submission):
     """https://praw.readthedocs.io/en/stable/code_overview/models/submission.html"""
+    arxiv_ids = parse_arxiv_ids(submission.selftext)
+    score = int(submission.score / len(arxiv_ids) if len(arxiv_ids) > 0 else submission.score)
     return {
         "id": f"https://reddit.com/{submission.id}",
-        "score": submission.score,
+        "score": score,
         "num_comments": submission.num_comments,
         "created_at": submission.created_utc,
-        "arxiv_id": parse_arxiv_ids(submission.selftext),
+        "arxiv_id": arxiv_ids,
         "title": submission.title,
         "description": submission.selftext,
     }
@@ -56,12 +58,14 @@ def search_reddit(query: str, sort="relevance", syntax="lucene", time_filter="al
 
 def hit_to_dict(hit: dict):
     """https://hn.algolia.com/api"""
+    arxiv_ids = parse_arxiv_ids(hit["url"])
+    score = int(hit["points"] / len(arxiv_ids) if len(arxiv_ids) > 0 else hit["points"])
     return {
         "id": f"https://news.ycombinator.com/item?id={hit['objectID']}",
-        "score": hit["points"],
+        "score": score,
         "num_comments": hit["num_comments"],
         "created_at": hit["created_at_i"],
-        "arxiv_id": parse_arxiv_ids(hit["url"]),
+        "arxiv_id": arxiv_ids,
         "title": hit["title"],
         "description": hit["url"],
     }

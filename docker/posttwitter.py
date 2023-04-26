@@ -2,10 +2,12 @@
 # SPDX-License-Identifier: MIT
 
 import os
+import re
 import tempfile
 import time
 from datetime import datetime, timedelta, timezone
 
+import dateutil.parser
 import deeplcache
 import generatehtml
 import pandas as pd
@@ -24,8 +26,21 @@ def upload_first_page_to_twitter(api_v1: tweepy.API, arxiv_id: str):
     return None
 
 
+def generate_twitter_first_page(df: pd.DataFrame, i: int, is_new: bool, arxiv_id: str, updated: str, title: str, summary_texts: list[str], authors: list[str], score: int, num_comments: int, count: int, primary_category: str, categories: list[str]):
+    summary_text = " ".join(summary_texts)
+    new_md = "🆕" if is_new else ""
+    authors_md = ", ".join(authors)
+    categories_md = utils.avoid_auto_link(" | ".join([primary_category] + [c for c in categories if c != primary_category and re.match(r"\w+\.\w+$", c)]))
+    stats_md = f"{score} Likes, {num_comments} Comments, {count} Posts"
+    updated_md = dateutil.parser.isoparse(updated).strftime("%d %b %Y")
+    title_md = title
+    abs_md = f"https://arxiv.org/abs/{arxiv_id}"
+    text = f"[{len(df)-i}/{len(df)}] {stats_md}\n{abs_md} {categories_md}, {updated_md}\n\n{new_md}{title_md}\n\n{authors_md}"
+    return text, summary_text
+
+
 def post_to_twitter_first_page(api_v1: tweepy.API, api_v2: tweepy.Client, df: pd.DataFrame, i: int, is_new: bool, arxiv_id: str, updated: str, title: str, summary_texts: list[str], authors: list[str], score: int, num_comments: int, count: int, primary_category: str, categories: list[str]) -> str:
-    text, summary_text = utils.generate_first_page(df, i, is_new, arxiv_id, updated, title, summary_texts, authors, score, num_comments, count, primary_category, categories)
+    text, summary_text = generate_twitter_first_page(df, i, is_new, arxiv_id, updated, title, summary_texts, authors, score, num_comments, count, primary_category, categories)
     media_ids = []
     first_page_media_id = upload_first_page_to_twitter(api_v1, arxiv_id)
     if first_page_media_id:
@@ -41,8 +56,10 @@ def post_to_twitter_first_page(api_v1: tweepy.API, api_v2: tweepy.Client, df: pd
 
 
 def post_to_twitter_link(api_v2: tweepy.Client, prev_tweet_id: str, arxiv_id: str) -> str:
-    uri = f"https://twitter.com/search?q=arxiv.org%2Fabs%2F{arxiv_id}"
-    text = f"Twitter Search: {uri}"
+    twitter_uri = f"https://twitter.com/search?q=arxiv.org%2Fabs%2F{arxiv_id}%20OR%20arxiv.org%2Fpdf%2F{arxiv_id}.pdf"
+    reddit_uri = f"https://www.reddit.com/search/?q=%22{arxiv_id}%22&sort=top"
+    hackernews_uri = f"https://hn.algolia.com/?query=%22{arxiv_id}%22&type=all"
+    text = f"Twitter: {twitter_uri}\nReddit: {reddit_uri}\nHacker News: {hackernews_uri}"
     try:
         response = api_v2.create_tweet(text=utils.strip_tweet(text, 280), user_auth=True, in_reply_to_tweet_id=prev_tweet_id)
         prev_tweet_id = response.data["id"] if type(response) is tweepy.Response and not response.errors else ""
