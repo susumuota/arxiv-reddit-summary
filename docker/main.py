@@ -136,12 +136,20 @@ def filter_df(df: pd.DataFrame, top_n=10, days=365):
 
 
 def summarize(query, time_filter="month", days=30, limit=300):
+    print("search_reddit...")
     reddit_document_df = search_reddit(f"selftext:{query}", sort="top", time_filter=time_filter, limit=limit)
+    print("search_reddit...done: ", len(reddit_document_df))
+    print("search_hackernews...")
     hackernews_document_df = search_hackernews(query, attribute="url", days=days, limit=limit)
+    print("search_hackernews...done: ", len(hackernews_document_df))
     document_df = pd.concat([reddit_document_df, hackernews_document_df], ignore_index=True).sort_values(by=["score", "num_comments"], ascending=False).reset_index(drop=True)
+    print("document_df: ", len(document_df))
     stats_df = get_arxiv_stats(document_df)
+    print("stats_df: ", len(stats_df))
     contents_df = get_arxiv_contents(stats_df["arxiv_id"].tolist(), chunk_size=100)
+    print("contents_df: ", len(contents_df))
     paper_df = pd.merge(stats_df, contents_df, on="arxiv_id")
+    print("paper_df: ", len(paper_df))
     return paper_df, document_df
 
 
@@ -185,6 +193,7 @@ def main():
 
     # filter by days
     filtered_df = filter_df(paper_df, top_n=notify_top_n, days=filter_days)
+    print("filtered_df: ", len(filtered_df))
 
     # translate summary text
     dlc = deeplcache.DeepLCache(deepl_api)

@@ -141,19 +141,19 @@ def post_to_bluesky_trans(api: nanoatp.BskyAgent, root_post: dict[str, str], par
 
 
 def post_to_bluesky_ranking(api: nanoatp.BskyAgent, dlc: deeplcache.DeepLCache, df: pd.DataFrame) -> dict[str, str]:
-    title = f"Top {len(df)} most popular arXiv papers in the last 30 days\n"
+    title = f"Top {len(df)} most popular arXiv papers in the last 30 days.\n"
     date = datetime.now(timezone.utc).strftime("%d %b %Y")
     html_text = generatehtml.generate_top_n_html(title, date, df, dlc)
     uris = list(map(lambda item: (f"{item[0]+1}/{len(df)}", f"https://arxiv.org/abs/{item[1][0]}"), enumerate(zip(df[::-1]["arxiv_id"]))))
-    metadata = "\n".join(map(lambda item: " ".join(item), uris))
-    image = upload_html_to_bluesky(api, "top_n.jpg", html_text, utils.strip_tweet(metadata, 300))
+    alt_text = "\n".join(map(lambda item: " ".join(item), uris))
+    image = upload_html_to_bluesky(api, "top_n.jpg", html_text, utils.strip_tweet(alt_text, 300))
     images = []
     images.append(image) if image else None
     text = title + " ".join(map(lambda item: f"[{item[0]}]", uris))
     facets = generate_facets(text, uris)
+    embed = {"$type": "app.bsky.embed.images#main", "images": images}
+    record = {"text": text, "facets": facets, "embed": embed}
     try:
-        embed = {"$type": "app.bsky.embed.images#main", "images": images}
-        record = {"text": text, "facets": facets, "embed": embed}
         return api.post(record)
     except Exception as e:
         print(e)
