@@ -17,19 +17,19 @@ export RUN_JOB_NAME="arxiv-reddit-summary-job-1"
 export SCHEDULER_JOB_NAME="arxiv-reddit-summary-job-everyday-9am"
 
 
-gcloud artifacts repositories list --project=$PROJECT_ID
+gcloud artifacts repositories list --project=$PROJECT_ID --location=$REGION
 gcloud artifacts repositories delete $REPOSITORY --project=$PROJECT_ID --location=$REGION --quiet
 gcloud artifacts repositories create $REPOSITORY \
   --project=$PROJECT_ID \
   --repository-format="docker" \
   --location=$REGION
-gcloud artifacts repositories list --project=$PROJECT_ID
+gcloud artifacts repositories list --project=$PROJECT_ID --location=$REGION
 
 gcloud builds submit \
   --project=$PROJECT_ID \
   --region=$REGION \
   --tag="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${IMAGE_NAME}:${TAG_NAME}"
-gcloud artifacts repositories list --project=$PROJECT_ID
+gcloud artifacts repositories list --project=$PROJECT_ID --location=$REGION
 
 gcloud beta run jobs list --project=$PROJECT_ID
 gcloud beta run jobs delete $RUN_JOB_NAME --project=$PROJECT_ID --region=$REGION --quiet

@@ -359,7 +359,7 @@ gcloud artifacts repositories create $REPOSITORY \
   --project=$PROJECT_ID \
   --repository-format="docker" \
   --location=$REGION
-gcloud artifacts repositories list --project=$PROJECT_ID
+gcloud artifacts repositories list --project=$PROJECT_ID --location=$REGION
 # gcloud artifacts repositories delete $REPOSITORY --project=$PROJECT_ID --location=$REGION
 # gcloud services disable artifactregistry.googleapis.com --project=$PROJECT_ID
 # unset REPOSITORY REGION
@@ -379,7 +379,7 @@ gcloud builds submit \
   --region=$REGION \
   --tag="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${IMAGE_NAME}:${TAG_NAME}"
 gcloud builds list --project=$PROJECT_ID --region=$REGION
-gcloud artifacts repositories list --project=$PROJECT_ID
+gcloud artifacts repositories list --project=$PROJECT_ID --location=$REGION
 # gcloud services disable cloudbuild.googleapis.com --project=$PROJECT_ID
 # unset TAG_NAME
 ```
