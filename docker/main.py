@@ -135,11 +135,9 @@ def filter_df(df: pd.DataFrame, top_n=10, days=365):
     return df.query("published > @days_ago").head(top_n).reset_index(drop=True)
 
 
-def summarize(query):
-    # reddit_document_df = search_reddit(f"selftext:{query}", sort="top", time_filter="week", limit=100)
-    reddit_document_df = search_reddit(f"selftext:{query}", sort="top", time_filter="month", limit=300)
-    # hackernews_document_df = search_hackernews(query, attribute="url", days=7, limit=100)
-    hackernews_document_df = search_hackernews(query, attribute="url", days=30, limit=300)
+def summarize(query, time_filter="month", days=30, limit=300):
+    reddit_document_df = search_reddit(f"selftext:{query}", sort="top", time_filter=time_filter, limit=limit)
+    hackernews_document_df = search_hackernews(query, attribute="url", days=days, limit=limit)
     document_df = pd.concat([reddit_document_df, hackernews_document_df], ignore_index=True).sort_values(by=["score", "num_comments"], ascending=False).reset_index(drop=True)
     stats_df = get_arxiv_stats(document_df)
     contents_df = get_arxiv_contents(stats_df["arxiv_id"].tolist(), chunk_size=100)
@@ -163,9 +161,12 @@ def translate_arxiv(dlc: deeplcache.DeepLCache, df: pd.DataFrame, target_lang: s
 def main():
     # settings
     query = "arxiv.org"
-    filter_days = 365
+    summarize_time_filter = "month"  # or "week"
+    summarize_days = 30  # should be 30 if "month"
+    summarize_limit = 300
+    filter_days = 30
     deepl_target_lang = "JA"
-    deepl_expire_days = 30
+    deepl_expire_days = 90
     notify_top_n = int(os.getenv("NOTIFY_TOP_N", 10))
 
     # prepare apis
@@ -180,11 +181,10 @@ def main():
     bluesky_api.login(os.getenv("ATP_IDENTIFIER"), os.getenv("ATP_PASSWORD"))  # type: ignore
 
     # search reddit and measure popularity
-    paper_df, document_df = summarize(query)
+    paper_df, document_df = summarize(query, time_filter=summarize_time_filter, days=summarize_days, limit=summarize_limit)
 
     # filter by days
     filtered_df = filter_df(paper_df, top_n=notify_top_n, days=filter_days)
-    # print(filtered_df.head(10))
 
     # translate summary text
     dlc = deeplcache.DeepLCache(deepl_api)
