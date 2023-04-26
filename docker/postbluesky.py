@@ -63,9 +63,7 @@ def post_to_bluesky_first_page(api: nanoatp.BskyAgent, df: pd.DataFrame, i: int,
     images.append(image) if image else None
     parent_post: dict[str, str] = {}
     text = f"{first_page_text}"
-    patterns = [
-        (arxiv_id, f"https://arxiv.org/abs/{arxiv_id}"),
-    ]
+    patterns = [(arxiv_id, f"https://arxiv.org/abs/{arxiv_id}")]
     facets = generate_facets(text, patterns)
     embed = {"$type": "app.bsky.embed.images#main", "images": images}
     record = {"text": utils.strip_tweet(text, 300), "facets": facets, "embed": embed}
@@ -184,7 +182,7 @@ def post_to_bluesky(api: nanoatp.BskyAgent, dlc: deeplcache.DeepLCache, df: pd.D
         time.sleep(1)
         parent_post = post_to_bluesky_link(api, root_post, parent_post, arxiv_id, title, summary_texts)
         time.sleep(1)
-        top_n_documents = document_df[document_df["arxiv_id"].apply(lambda ids: arxiv_id in ids)].head(5)
+        top_n_documents = document_df[document_df["arxiv_id"].apply(lambda ids: arxiv_id in ids)].head(3)  # TODO
         parent_post = post_to_bluesky_posts(api, root_post, parent_post, top_n_documents)
         post_to_bluesky_trans(api, root_post, parent_post, arxiv_id, title, authors, summary_texts, trans_texts)
         print("post_to_bluesky: ", f"[{len(df)-i}/{len(df)}]")

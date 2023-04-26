@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "arxiv-reddit-summary"
-version = "0.5.0"
+version = "0.5.1"
 description = "Summarize top 20 most popular arXiv papers on Reddit and Hacker News in the last 30 days and post them to Slack, Twitter and Bluesky."
 authors = ["Susumu OTA <1632335+susumuota@users.noreply.github.com>"]
 license = "MIT"
@@ -10,15 +10,15 @@ packages = [{include = "arxiv_reddit_summary"}]
 [tool.poetry.dependencies]
 python = "^3.10"
 praw = "^7.7.0"
-pandas = "^2.0.0"
-arxiv = "^1.4.4"
-tweepy = "^4.13.0"
+pandas = "^2.0.1"
+arxiv = "^1.4.7"
+tweepy = "^4.14.0"
 python-dateutil = "^2.8.2"
 imgkit = "^1.2.3"
 google-cloud-storage = "^2.8.0"
 deepl = "^1.14.0"
 pysbd = "^0.3.4"
-slack-sdk = "^3.21.1"
+slack-sdk = "^3.21.2"
 nanoatp = "^0.3.2"
 requests = "^2.28.2"
 
