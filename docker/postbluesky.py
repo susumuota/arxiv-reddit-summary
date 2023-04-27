@@ -18,6 +18,7 @@ import utils
 
 
 def generate_facets(text: str, patterns: list[tuple[str, str]]):
+    # TODO: fix naive implementation
     facets: list[dict[str, Any]] = []
     for pattern, uri in patterns:
         start = text.find(pattern)
@@ -82,7 +83,7 @@ def post_to_bluesky_link(api: nanoatp.BskyAgent, root_post: dict[str, str], pare
         ("Reddit", f"https://www.reddit.com/search/?q=%22{arxiv_id}%22&sort=top"),
         ("Hacker News", f"https://hn.algolia.com/?query=%22{arxiv_id}%22&type=all"),
     ]
-    text = "Links: " + ", ".join([p[0] for p in patterns])
+    text = "Links: abs, pdf\nSearch: Twitter, Reddit, Hacker News"
     facets = generate_facets(text, patterns)
     external = {"$type": "app.bsky.embed.external#external", "uri": patterns[0][1], "title": title, "description": utils.strip_tweet(" ".join(summary_texts), 300)}
     embed = {"$type": "app.bsky.embed.external#main", "external": external}
@@ -180,10 +181,10 @@ def post_to_bluesky(api: nanoatp.BskyAgent, dlc: deeplcache.DeepLCache, df: pd.D
             continue
         root_post = parent_post
         time.sleep(1)
-        parent_post = post_to_bluesky_link(api, root_post, parent_post, arxiv_id, title, summary_texts)
-        time.sleep(1)
         top_n_documents = document_df[document_df["arxiv_id"].apply(lambda ids: arxiv_id in ids)].head(3)  # TODO
         parent_post = post_to_bluesky_posts(api, root_post, parent_post, top_n_documents)
+        parent_post = post_to_bluesky_link(api, root_post, parent_post, arxiv_id, title, summary_texts)
+        time.sleep(1)
         post_to_bluesky_trans(api, root_post, parent_post, arxiv_id, title, authors, summary_texts, trans_texts)
         print("post_to_bluesky: ", f"[{len(df)-i}/{len(df)}]")
         time.sleep(1)

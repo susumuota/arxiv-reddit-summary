@@ -69,6 +69,7 @@ def post_to_twitter_link(api_v2: tweepy.Client, prev_tweet_id: str, arxiv_id: st
 
 
 def post_to_twitter_tweets(api_v2: tweepy.Client, prev_tweet_id: str, df: pd.DataFrame) -> str:
+    df = df[::-1]  # reverse order
     for i, (id, score, num_comments, created_at) in enumerate(zip(df["id"], df["score"], df["num_comments"], df["created_at"])):
         stats_md = f"{score} Likes, {num_comments} Comments"
         created_at_md = datetime.fromtimestamp(created_at).strftime("%d %b %Y")
