@@ -114,10 +114,10 @@ def post_to_bluesky_posts(api: nanoatp.BskyAgent, root_post: dict[str, str], par
     return parent_post
 
 
-def upload_html_to_bluesky(api: nanoatp.BskyAgent, filename: str, html_text: str, alt_text: str) -> dict[str, Any]:
+def upload_html_to_bluesky(api: nanoatp.BskyAgent, filename: str, html_text: str, alt_text: str, quality: int = 94) -> dict[str, Any]:
     with tempfile.TemporaryDirectory() as tmp_dir:
         abs_path = os.path.join(tmp_dir, filename)
-        abs_path = utils.html_to_image(html_text, abs_path)
+        abs_path = utils.html_to_image(html_text, abs_path, quality)
         if os.path.isfile(abs_path):
             return api.uploadImage(abs_path, alt_text)
     return {}
@@ -147,13 +147,13 @@ def post_to_bluesky_ranking(api: nanoatp.BskyAgent, dlc: deeplcache.DeepLCache, 
     html_text = generatehtml.generate_top_n_html(title, date, df, dlc)
     uris = list(map(lambda item: (f"{item[0]+1}/{len(df)}", f"https://arxiv.org/abs/{item[1][0]}"), enumerate(zip(df[::-1]["arxiv_id"]))))
     alt_text = "\n".join(map(lambda item: " ".join(item), uris))
-    image = upload_html_to_bluesky(api, "top_n.jpg", html_text, utils.strip_tweet(alt_text, 300))
+    image = upload_html_to_bluesky(api, "top_n.jpg", html_text, utils.strip_tweet(alt_text, 300), 90)  # sometimes the image is too large to upload
     images = []
     images.append(image) if image else None
     text = title + " ".join(map(lambda item: f"[{item[0]}]", uris))
     facets = generate_facets(text, uris)
     embed = {"$type": "app.bsky.embed.images#main", "images": images}
-    record = {"text": text, "facets": facets, "embed": embed}
+    record = {"text": utils.strip_tweet(text, 300), "facets": facets, "embed": embed}
     try:
         return api.post(record)
     except Exception as e:

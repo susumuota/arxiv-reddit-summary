@@ -171,7 +171,7 @@ def main():
     query = "arxiv.org"
     summarize_time_filter = "month"  # or "week"
     summarize_days = 30  # should be 30 if "month"
-    summarize_limit = 300
+    summarize_limit = 500
     filter_days = 30
     deepl_target_lang = "JA"
     deepl_expire_days = 90
