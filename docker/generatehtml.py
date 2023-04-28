@@ -74,6 +74,9 @@ HTML_TOP_N_TEMPLATE = """
         font-size: 24px;
         margin: 2em;
       }}
+      .new {{
+        color: blue;
+      }}
     </style>
   </head>
   <body>
@@ -90,9 +93,8 @@ HTML_TOP_N_TEMPLATE = """
 
 HTML_TOP_N_ITEM_TEMPLATE = """
 <p class="item">
-  [{i}/{n}] {new_icon}<b>{title}</b><br />
-  <it>{stats}, {categories}, {updated}</it><br />
-  <a href="https://arxiv.org/abs/{arxiv_id}">https://arxiv.org/abs/{arxiv_id}</a>
+  [{i}/{n}] <b>{title}</b><br />
+  {stats}, {categories}, {updated}
 </p>
 """
 
@@ -106,9 +108,10 @@ def generate_top_n_html(page_title: str, date: str, df: pd.DataFrame, dlc: deepl
         if trans is None:
             continue
         _, trans_ts = trans
-        new_icon = "<b>[New]</b> " if twenty_three_hours_ago < datetime.fromisoformat(trans_ts) else ""  # TODO
+        if twenty_three_hours_ago < datetime.fromisoformat(trans_ts):
+            title = f'<span class="new">[New] {title}</span>'
         categories = " | ".join([primary_category] + [c for c in categories if c != primary_category and re.match(r"\w+\.\w+$", c)])
         stats = f"<b>{score}</b> Likes, {num_comments} Comments, {count} Posts"
         updated = dateutil.parser.isoparse(updated).strftime("%d %b %Y")
-        items.append(HTML_TOP_N_ITEM_TEMPLATE.format(i=i + 1, n=len(df), new_icon=new_icon, title=title, stats=stats, categories=categories, updated=updated, arxiv_id=arxiv_id))
+        items.append(HTML_TOP_N_ITEM_TEMPLATE.format(i=i + 1, n=len(df), title=title, stats=stats, categories=categories, updated=updated, arxiv_id=arxiv_id))
     return HTML_TOP_N_TEMPLATE.format(title=page_title, date=date, content="\n".join(items))

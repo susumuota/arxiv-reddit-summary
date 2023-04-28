@@ -25,8 +25,8 @@ def pdf_to_png(pdf_filename: str):
     return f"{pdf_filename}.png"
 
 
-def html_to_image(html: str, image_filename: str):
-    result = imgkit.from_string(html, image_filename, options={"width": 1200, "quiet": ""})
+def html_to_image(html: str, image_filename: str, quality: int = 94):
+    result = imgkit.from_string(html, image_filename, options={"width": 1200, "quiet": "", "quality": quality})
     assert result is True  # TODO
     return image_filename
 
