@@ -1,6 +1,6 @@
 # arXiv Reddit Summary
 
-Summarize top 30 most popular arXiv papers on Reddit and Hacker News in the last 30 days and post them to Slack, Twitter and Bluesky.
+Summarize the top 30 most popular arXiv papers on Reddit and Hacker News in the last 30 days and post them on Slack, Twitter and Bluesky.
 
 ## Demo
 
