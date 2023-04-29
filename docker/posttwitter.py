@@ -68,12 +68,13 @@ def post_to_twitter_link(api_v2: tweepy.Client, prev_tweet_id: str, arxiv_id: st
     return prev_tweet_id
 
 
-def post_to_twitter_tweets(api_v2: tweepy.Client, prev_tweet_id: str, df: pd.DataFrame) -> str:
-    df = df[::-1]  # reverse order
-    for i, (id, score, num_comments, created_at) in enumerate(zip(df["id"], df["score"], df["num_comments"], df["created_at"])):
+def post_to_twitter_tweets(api_v2: tweepy.Client, prev_tweet_id: str, document_df: pd.DataFrame) -> str:
+    rev_df = document_df[::-1]  # reverse order
+    for i, (id, score, num_comments, created_at) in enumerate(zip(rev_df["id"], rev_df["score"], rev_df["num_comments"], rev_df["created_at"])):
         stats_md = f"{score} Likes, {num_comments} Comments"
         created_at_md = datetime.fromtimestamp(created_at).strftime("%d %b %Y")
-        text = f"({i+1}/{len(df)}) {stats_md}, {created_at_md}\n{id}\n"
+        link = "Reddit" if id.find("reddit.com") != -1 else "Hacker News" if id.find("news.ycombinator.com") != -1 else id
+        text = f"({i+1}/{len(rev_df)}) {stats_md}, {created_at_md}, {link}\n{id}\n"
         try:
             response = api_v2.create_tweet(text=utils.strip_tweet(text, 280), user_auth=True, in_reply_to_tweet_id=prev_tweet_id)
             prev_tweet_id = response.data["id"] if type(response) is tweepy.Response and not response.errors else ""
@@ -101,7 +102,7 @@ def post_to_twitter_ranking(api_v1: tweepy.API, api_v2: tweepy.Client, dlc: deep
     top_n_media_id = upload_html_to_twitter(api_v1, "top_n.jpg", html_text)
     if top_n_media_id:
         rev_df = df[::-1]
-        metadata = "\n".join(map(lambda item: f"[{item[0]+1}/{len(df)}] https://arxiv.org/abs/{item[1][0]}", enumerate(zip(rev_df["arxiv_id"]))))
+        metadata = "\n".join(map(lambda item: f"[{item[0]+1}/{len(df)}] arxiv.org/abs/{item[1][0]}", enumerate(zip(rev_df["arxiv_id"]))))
         api_v1.create_media_metadata(top_n_media_id, utils.strip_tweet(metadata, 1000))
         media_ids.append(top_n_media_id)
     text = title
