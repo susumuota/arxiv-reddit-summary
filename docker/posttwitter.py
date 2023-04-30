@@ -55,11 +55,14 @@ def post_to_twitter_first_page(api_v1: tweepy.API, api_v2: tweepy.Client, df: pd
     return prev_tweet_id
 
 
-def post_to_twitter_link(api_v2: tweepy.Client, prev_tweet_id: str, arxiv_id: str) -> str:
+def post_to_twitter_link(api_v2: tweepy.Client, prev_tweet_id: str, arxiv_id: str, link_type: str) -> str:
     twitter_uri = f"https://twitter.com/search?q=arxiv.org%2Fabs%2F{arxiv_id}%20OR%20arxiv.org%2Fpdf%2F{arxiv_id}.pdf"
     reddit_uri = f"https://www.reddit.com/search/?q=%22{arxiv_id}%22&sort=top"
     hackernews_uri = f"https://hn.algolia.com/?query=%22{arxiv_id}%22&type=all"
-    text = f"Twitter: {twitter_uri}\nReddit: {reddit_uri}\nHacker News: {hackernews_uri}"
+    # the last uri will become a link card
+    text = f"Reddit: {reddit_uri}\nHacker News: {hackernews_uri}\nTwitter: {twitter_uri}"
+    text = f"Twitter: {twitter_uri}\nHacker News: {hackernews_uri}Reddit: {reddit_uri}\n" if link_type == "Reddit" else text
+    text = f"Twitter: {twitter_uri}\nReddit: {reddit_uri}\nHacker News: {hackernews_uri}" if link_type == "Hacker News" else text
     try:
         response = api_v2.create_tweet(text=utils.strip_tweet(text, 280), user_auth=True, in_reply_to_tweet_id=prev_tweet_id)
         prev_tweet_id = response.data["id"] if type(response) is tweepy.Response and not response.errors else ""
@@ -73,7 +76,7 @@ def post_to_twitter_tweets(api_v2: tweepy.Client, prev_tweet_id: str, document_d
     for i, (id, score, num_comments, created_at) in enumerate(zip(rev_df["id"], rev_df["score"], rev_df["num_comments"], rev_df["created_at"])):
         stats_md = f"{score} Likes, {num_comments} Comments"
         created_at_md = datetime.fromtimestamp(created_at).strftime("%d %b %Y")
-        link = "Reddit" if id.find("reddit.com") != -1 else "Hacker News" if id.find("news.ycombinator.com") != -1 else id
+        link = utils.get_link_type(id) or id
         text = f"({i+1}/{len(rev_df)}) {stats_md}, {created_at_md}, {link}\n{id}\n"
         try:
             response = api_v2.create_tweet(text=utils.strip_tweet(text, 280), user_auth=True, in_reply_to_tweet_id=prev_tweet_id)
@@ -146,11 +149,12 @@ def post_to_twitter(api_v1: tweepy.API, api_v2: tweepy.Client, dlc: deeplcache.D
         time.sleep(1)
         if not prev_tweet_id:
             continue
-        prev_tweet_id = post_to_twitter_link(api_v2, prev_tweet_id, arxiv_id)
+        top_n_documents = document_df[document_df["arxiv_id"].apply(lambda ids: arxiv_id in ids)].head(5)
+        link_type = utils.get_link_type(top_n_documents.iloc[0]["id"])
+        prev_tweet_id = post_to_twitter_link(api_v2, prev_tweet_id, arxiv_id, link_type)
         time.sleep(1)
         if not prev_tweet_id:
             continue
-        top_n_documents = document_df[document_df["arxiv_id"].apply(lambda ids: arxiv_id in ids)].head(5)
         prev_tweet_id = post_to_twitter_tweets(api_v2, prev_tweet_id, top_n_documents)
         post_to_twitter_trans(api_v1, api_v2, prev_tweet_id, arxiv_id, title, authors, summary_texts, trans_texts)
         print("post_to_twitter: ", f"[{len(df)-i}/{len(df)}]")
