@@ -60,3 +60,7 @@ def avoid_auto_link(text: str):
 
 def strip(text: str, length: int):
     return text[: length - 3] + "..." if len(text) > length else text
+
+
+def get_link_type(link: str):
+    return "Reddit" if link.find("reddit.com") != -1 else "Hacker News" if link.find("news.ycombinator.com") != -1 else ""

@@ -99,7 +99,7 @@ def post_to_bluesky_posts(api: nanoatp.BskyAgent, root_post: dict[str, str], par
     for i, (id, score, num_comments, created_at, title, description) in enumerate(zip(df["id"], df["score"], df["num_comments"], df["created_at"], df["title"], df["description"])):
         stats_md = f"{score} Likes, {num_comments} Comments"
         created_at_md = datetime.fromtimestamp(created_at).strftime("%d %b %Y")
-        link = "Reddit" if id.find("reddit.com") != -1 else "Hacker News" if id.find("news.ycombinator.com") != -1 else id
+        link = utils.get_link_type(id) or id
         text = f"({i+1}/{len(df)}) {stats_md}, {created_at_md}, {link}"
         patterns = [(link, id)]
         facets = generate_facets(text, patterns)
