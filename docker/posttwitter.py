@@ -61,7 +61,7 @@ def post_to_twitter_link(api_v2: tweepy.Client, prev_tweet_id: str, arxiv_id: st
     hackernews_uri = f"https://hn.algolia.com/?query=%22{arxiv_id}%22&type=all"
     # the last uri will become a link card
     text = f"Reddit: {reddit_uri}\nHacker News: {hackernews_uri}\nTwitter: {twitter_uri}"
-    text = f"Twitter: {twitter_uri}\nHacker News: {hackernews_uri}Reddit: {reddit_uri}\n" if link_type == "Reddit" else text
+    text = f"Twitter: {twitter_uri}\nHacker News: {hackernews_uri}\nReddit: {reddit_uri}" if link_type == "Reddit" else text
     text = f"Twitter: {twitter_uri}\nReddit: {reddit_uri}\nHacker News: {hackernews_uri}" if link_type == "Hacker News" else text
     try:
         response = api_v2.create_tweet(text=utils.strip_tweet(text, 280), user_auth=True, in_reply_to_tweet_id=prev_tweet_id)
@@ -72,12 +72,12 @@ def post_to_twitter_link(api_v2: tweepy.Client, prev_tweet_id: str, arxiv_id: st
 
 
 def post_to_twitter_tweets(api_v2: tweepy.Client, prev_tweet_id: str, document_df: pd.DataFrame) -> str:
-    rev_df = document_df[::-1]  # reverse order
-    for i, (id, score, num_comments, created_at) in enumerate(zip(rev_df["id"], rev_df["score"], rev_df["num_comments"], rev_df["created_at"])):
+    df = document_df[::-1]  # reverse order
+    for i, (id, score, num_comments, created_at) in enumerate(zip(df["id"], df["score"], df["num_comments"], df["created_at"])):
         stats_md = f"{score} Likes, {num_comments} Comments"
         created_at_md = datetime.fromtimestamp(created_at).strftime("%d %b %Y")
         link = utils.get_link_type(id) or id
-        text = f"({i+1}/{len(rev_df)}) {stats_md}, {created_at_md}, {link}\n{id}\n"
+        text = f"({len(df)-i}/{len(df)}) {stats_md}, {created_at_md}, {link}\n{id}\n"
         try:
             response = api_v2.create_tweet(text=utils.strip_tweet(text, 280), user_auth=True, in_reply_to_tweet_id=prev_tweet_id)
             prev_tweet_id = response.data["id"] if type(response) is tweepy.Response and not response.errors else ""
