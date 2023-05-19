@@ -60,9 +60,9 @@ def post_to_twitter_link(api_v2: tweepy.Client, prev_tweet_id: str, arxiv_id: st
     reddit_uri = f"https://www.reddit.com/search/?q=%22{arxiv_id}%22&sort=top"
     hackernews_uri = f"https://hn.algolia.com/?query=%22{arxiv_id}%22&type=all"
     # the last uri will become a link card
-    text = f"Reddit: {reddit_uri}\nHacker News: {hackernews_uri}\nTwitter: {twitter_uri}"
-    text = f"Twitter: {twitter_uri}\nHacker News: {hackernews_uri}\nReddit: {reddit_uri}" if link_type == "Reddit" else text
-    text = f"Twitter: {twitter_uri}\nReddit: {reddit_uri}\nHacker News: {hackernews_uri}" if link_type == "Hacker News" else text
+    text = f"Reddit: {reddit_uri} \nHacker News: {hackernews_uri} \nTwitter: {twitter_uri}"
+    text = f"Twitter: {twitter_uri} \nHacker News: {hackernews_uri} \nReddit: {reddit_uri}" if link_type == "Reddit" else text
+    text = f"Twitter: {twitter_uri} \nReddit: {reddit_uri} \nHacker News: {hackernews_uri}" if link_type == "Hacker News" else text
     try:
         response = api_v2.create_tweet(text=utils.strip_tweet(text, 280), user_auth=True, in_reply_to_tweet_id=prev_tweet_id)
         prev_tweet_id = response.data["id"] if type(response) is tweepy.Response and not response.errors else ""
