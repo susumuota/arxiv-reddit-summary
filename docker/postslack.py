@@ -69,7 +69,8 @@ def post_to_slack_authors(api: slack_sdk.WebClient, channel: str, title: str, ts
     twitter_md = f"<https://twitter.com/search?q=arxiv.org%2Fabs%2F{arxiv_id}%20OR%20arxiv.org%2Fpdf%2F{arxiv_id}.pdf|Twitter>"
     reddit_md = f"<https://www.reddit.com/search/?q=%22{arxiv_id}%22&sort=top|Reddit>"
     hackernews_md = f"<https://hn.algolia.com/?query=%22{arxiv_id}%22&type=all|HackerNews>"
-    blocks = [{"type": "section", "text": {"type": "mrkdwn", "text": f"*Links*: {abs_md}, {pdf_md}, {twitter_md}, {reddit_md}, {hackernews_md}\n\n*Authors*: {authors_md}{comment_md}"}}]
+    huggingface_md = f"<https://huggingface.co/papers/{arxiv_id}|HuggingFace>"
+    blocks = [{"type": "section", "text": {"type": "mrkdwn", "text": f"*Links*: {abs_md}, {pdf_md}, {twitter_md}, {reddit_md}, {hackernews_md}, {huggingface_md}\n\n*Authors*: {authors_md}{comment_md}"}}]
     title_md = utils.strip(title, 200)
     return api.chat_postMessage(channel=channel, text=title_md, blocks=blocks, thread_ts=ts)
 
