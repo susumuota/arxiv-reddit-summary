@@ -82,8 +82,9 @@ def post_to_bluesky_link(api: nanoatp.BskyAgent, root_post: dict[str, str], pare
         ("Twitter", f"https://twitter.com/search?q=arxiv.org%2Fabs%2F{arxiv_id}%20OR%20arxiv.org%2Fpdf%2F{arxiv_id}.pdf"),
         ("Reddit", f"https://www.reddit.com/search/?q=%22{arxiv_id}%22&sort=top"),
         ("Hacker News", f"https://hn.algolia.com/?query=%22{arxiv_id}%22&type=all"),
+        ("Hugging Face", f"https://huggingface.co/papers/{arxiv_id}"),
     ]
-    text = "Links: abs, pdf\nSearch: Twitter, Reddit, Hacker News"
+    text = "Links: abs, pdf\nSearch: Twitter, Reddit, Hacker News, Hugging Face"
     facets = generate_facets(text, patterns)
     external = {"$type": "app.bsky.embed.external#external", "uri": patterns[0][1], "title": title, "description": utils.strip_tweet(" ".join(summary_texts), 300)}
     embed = {"$type": "app.bsky.embed.external#main", "external": external}

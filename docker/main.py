@@ -9,6 +9,7 @@
 
 import os
 import re
+import time
 from datetime import datetime, timedelta, timezone
 
 import arxiv
@@ -24,6 +25,7 @@ import pysbd
 import requests
 import slack_sdk
 import tweepy
+from bs4 import BeautifulSoup, Tag
 from google.cloud import storage
 
 
@@ -33,6 +35,10 @@ ARXIV_URL_PATTERN = re.compile(r"https?://arxiv\.org/(abs|pdf)/([0-9]{4}\.[0-9]{
 def parse_arxiv_ids(text: str) -> list[str]:
     text = text.replace("\\", "")  # TODO: some text includes 2 backslashes in urls
     return list(set([m[1] for m in re.findall(ARXIV_URL_PATTERN, text)]))
+
+
+def flatten(lists: list[list]):
+    return [item for sublist in lists for item in sublist]
 
 
 def submission_to_dict(submission: praw.reddit.Submission):
@@ -82,6 +88,48 @@ def search_hackernews(query: str, attribute="", days=0, limit: int | None = None
     response = requests.get("https://hn.algolia.com/api/v1/search", params=params)
     json = response.json()
     return pd.json_normalize([hit_to_dict(hit) for hit in json["hits"]])
+
+
+def article_to_dict(article: Tag, created_at: float):
+    """https://huggingface.co/papers"""
+    h3_a = article.select_one("h3 > a")
+    arxiv_id = "" if h3_a is None else str(h3_a["href"].split("/")[-1])  # TODO: check if arxiv_id is valid
+    score_div = article.select_one("div[class^=leading]")  # TODO: better selector
+    score = 0 if score_div is None else int(score_div.text) if re.match(r"^\d+$", score_div.text) else 0
+    num_comments_a = article.select_one("a[href$='#community']")
+    num_comments = 0 if num_comments_a is None else int(num_comments_a.text)
+    return {
+        "id": f"https://huggingface.co/papers/{arxiv_id}",
+        "score": score,
+        "num_comments": num_comments,
+        "created_at": created_at,
+        "arxiv_id": [arxiv_id],
+        "title": h3_a.text,
+        "description": f"https://arxiv.org/abs/{arxiv_id}",
+    }
+
+
+def scrape_huggingface(timestamp: float, wait: int = 1):
+    """https://huggingface.co/papers"""
+    date = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d")
+    response = requests.get(f"https://huggingface.co/papers?date={date}")
+    soup = BeautifulSoup(response.text, "html.parser")
+    articles = soup.select("article")
+    result = [article_to_dict(article, timestamp) for article in articles]
+    print(f"scraped {len(result)} articles from {date}")
+    time.sleep(wait)
+    return result
+
+
+def search_huggingface(days: int = 30):
+    """https://huggingface.co/papers"""
+    now = datetime.now()
+    timestamps = [(now - timedelta(days=d)).timestamp() for d in range(days)]
+    df = pd.json_normalize(flatten([scrape_huggingface(ts) for ts in timestamps]))
+    # sometimes there are no articles for a given date.
+    # in that case, HF returns the article from the previous day.
+    # so we need to drop duplicates.
+    return df.drop_duplicates(subset=["id"], keep="last").reset_index(drop=True)
 
 
 def get_arxiv_stats(document_df: pd.DataFrame):
@@ -142,7 +190,10 @@ def summarize(query, time_filter="month", days=30, limit=300):
     print("search_hackernews...")
     hackernews_document_df = search_hackernews(query, attribute="url", days=days, limit=limit)
     print("search_hackernews...done: ", len(hackernews_document_df))
-    document_df = pd.concat([reddit_document_df, hackernews_document_df], ignore_index=True).sort_values(by=["score", "num_comments"], ascending=False).reset_index(drop=True)
+    print("search_huggingface...")
+    search_huggingface_df = search_huggingface(days=days)
+    print("search_huggingface...done: ", len(search_huggingface_df))
+    document_df = pd.concat([reddit_document_df, hackernews_document_df, search_huggingface_df], ignore_index=True).sort_values(by=["score", "num_comments"], ascending=False).reset_index(drop=True)
     print("document_df: ", len(document_df))
     stats_df = get_arxiv_stats(document_df)
     print("stats_df: ", len(stats_df))
