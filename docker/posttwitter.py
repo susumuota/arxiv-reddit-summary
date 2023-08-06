@@ -74,12 +74,15 @@ def post_to_twitter_link(api_v2: tweepy.Client, prev_tweet_id: str, arxiv_id: st
 
 
 def post_to_twitter_tweets(api_v2: tweepy.Client, prev_tweet_id: str, document_df: pd.DataFrame) -> str:
-    df = document_df[::-1]  # reverse order
+    # df = document_df[::-1]  # reverse order
+    df = document_df
     for i, (id, score, num_comments, created_at) in enumerate(zip(df["id"], df["score"], df["num_comments"], df["created_at"])):
         stats_md = f"{score} Likes, {num_comments} Comments"
         created_at_md = datetime.fromtimestamp(created_at).strftime("%d %b %Y")
         link = utils.get_link_type(id) or id
-        text = f"({len(df)-i}/{len(df)}) {stats_md}, {created_at_md}, {link}\n{id}\n"
+        # index = len(df) - i  # reverse order
+        index = i + 1
+        text = f"({index}/{len(df)}) {stats_md}, {created_at_md}, {link}\n{id}\n"
         try:
             response = api_v2.create_tweet(text=utils.strip_tweet(text, 280), user_auth=True, in_reply_to_tweet_id=prev_tweet_id)
             prev_tweet_id = response.data["id"] if type(response) is tweepy.Response and not response.errors else ""
