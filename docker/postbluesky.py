@@ -6,9 +6,7 @@ import re
 import tempfile
 import time
 from datetime import datetime, timedelta, timezone
-from io import BytesIO
 from typing import Any
-from urllib.parse import quote
 
 import dateutil.parser
 import deeplcache
@@ -16,25 +14,7 @@ import generatehtml
 import nanoatp
 import pandas as pd
 import pysbd
-import requests
 import utils
-
-
-def get_metadata(url: str):
-    encoded_url = quote(url)
-    extracted = requests.get(f"https://cardyb.bsky.app/v1/extract?url={encoded_url}")
-    extracted_json = extracted.json()
-    if extracted_json["image"]:
-        response = requests.get(extracted_json["image"], stream=True)
-        buffer = BytesIO()
-        for chunk in response.iter_content(chunk_size=8192):
-            if chunk:
-                buffer.write(chunk)
-        extracted_json.update({"data": buffer.getvalue()})
-        extracted_json.update({"encoding": response.headers.get("Content-Type")})
-        response.close()
-        buffer.close()
-    return extracted_json
 
 
 def generate_facets(text: str, patterns: list[tuple[str, str]]):
@@ -107,15 +87,7 @@ def post_to_bluesky_link(api: nanoatp.BskyAgent, root_post: dict[str, str], pare
     text = "Links: abs, pdf\nSearch: Twitter, Reddit, Hacker News, Hugging Face"
     facets = generate_facets(text, patterns)
     uri = patterns[0][1]
-    metadata = get_metadata(uri)
-    title = metadata["title"] or title
-    description = metadata["description"] or utils.strip_tweet(" ".join(summary_texts), 300)
-    blob = None
-    if "data" in metadata and "encoding" in metadata:
-        response = api.uploadBlob(metadata["data"], metadata["encoding"])
-        blob = response.get("blob")
-    external = {"$type": "app.bsky.embed.external#external", "uri": uri, "title": title, "description": description}
-    external.update({"thumb": blob}) if blob else None
+    external = api.uploadExternal(uri)
     embed = {"$type": "app.bsky.embed.external#main", "external": external}
     record = {"text": utils.strip_tweet(text, 300), "facets": facets, "reply": {"root": root_post, "parent": parent_post}, "embed": embed}
     try:
@@ -134,15 +106,7 @@ def post_to_bluesky_posts(api: nanoatp.BskyAgent, root_post: dict[str, str], par
         text = f"({index}/{len(df)}) {stats_md}, {created_at_md}, {link}"
         patterns = [(link, id)]
         facets = generate_facets(text, patterns)
-        metadata = get_metadata(id)
-        title = metadata["title"] or title
-        description = metadata["description"] or description
-        blob = None
-        if "data" in metadata and "encoding" in metadata:
-            response = api.uploadBlob(metadata["data"], metadata["encoding"])
-            blob = response.get("blob")
-        external = {"$type": "app.bsky.embed.external#external", "uri": id, "title": title, "description": description}
-        external.update({"thumb": blob}) if blob else None
+        external = api.uploadExternal(id)
         embed = {"$type": "app.bsky.embed.external#main", "external": external}
         record = {"text": utils.strip_tweet(text, 300), "facets": facets, "reply": {"root": root_post, "parent": parent_post}, "embed": embed}
         try:
