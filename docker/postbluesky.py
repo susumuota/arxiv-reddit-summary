@@ -75,6 +75,20 @@ def post_to_bluesky_first_page(api: nanoatp.BskyAgent, df: pd.DataFrame, i: int,
     return parent_post
 
 
+def generate_external(api: nanoatp.BskyAgent, uri: str, title: str, description: str):
+    try:
+        external = api.uploadExternal(uri)
+    except Exception as e:
+        print({"uri": uri, "error": str(e)})
+        external = {
+            "$type": "app.bsky.embed.external#external",
+            "uri": uri,
+            "title": title,
+            "description": description,
+        }
+    return external
+
+
 def post_to_bluesky_link(api: nanoatp.BskyAgent, root_post: dict[str, str], parent_post: dict[str, str], arxiv_id: str, title: str, summary_texts: list[str]):
     patterns = [
         ("abs", f"https://arxiv.org/abs/{arxiv_id}"),
@@ -87,7 +101,7 @@ def post_to_bluesky_link(api: nanoatp.BskyAgent, root_post: dict[str, str], pare
     text = "Links: abs, pdf\nSearch: Twitter, Reddit, Hacker News, Hugging Face"
     facets = generate_facets(text, patterns)
     uri = patterns[0][1]
-    external = api.uploadExternal(uri)
+    external = generate_external(api, uri, title, utils.strip_tweet(" ".join(summary_texts), 300))
     embed = {"$type": "app.bsky.embed.external#main", "external": external}
     record = {"text": utils.strip_tweet(text, 300), "facets": facets, "reply": {"root": root_post, "parent": parent_post}, "embed": embed}
     try:
@@ -106,7 +120,7 @@ def post_to_bluesky_posts(api: nanoatp.BskyAgent, root_post: dict[str, str], par
         text = f"({index}/{len(df)}) {stats_md}, {created_at_md}, {link}"
         patterns = [(link, id)]
         facets = generate_facets(text, patterns)
-        external = api.uploadExternal(id)
+        external = generate_external(api, id, title, utils.strip_tweet(description, 300))
         embed = {"$type": "app.bsky.embed.external#main", "external": external}
         record = {"text": utils.strip_tweet(text, 300), "facets": facets, "reply": {"root": root_post, "parent": parent_post}, "embed": embed}
         try:
