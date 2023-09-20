@@ -40,7 +40,7 @@ def upload_first_page_to_bluesky(api: nanoatp.BskyAgent, arxiv_id: str, summary_
     with tempfile.TemporaryDirectory() as tmp_dir:
         pdf_filename = utils.download_arxiv_pdf(arxiv_id, tmp_dir)
         first_page_filename = utils.pdf_to_png(pdf_filename)
-        if os.path.isfile(first_page_filename):
+        if os.path.isfile(first_page_filename) and os.path.getsize(first_page_filename) > 0:
             return api.uploadImage(first_page_filename, summary_text)
     return {}
 
@@ -79,7 +79,7 @@ def generate_external(api: nanoatp.BskyAgent, uri: str, title: str, description:
     try:
         external = api.uploadExternal(uri)
     except Exception as e:
-        print({"uri": uri, "error": str(e)})
+        print({"function": "uploadExternal", "uri": uri, "error": str(e)})
         external = {
             "$type": "app.bsky.embed.external#external",
             "uri": uri,
@@ -135,7 +135,7 @@ def upload_html_to_bluesky(api: nanoatp.BskyAgent, filename: str, html_text: str
     with tempfile.TemporaryDirectory() as tmp_dir:
         abs_path = os.path.join(tmp_dir, filename)
         abs_path = utils.html_to_image(html_text, abs_path, quality)
-        if os.path.isfile(abs_path):
+        if os.path.isfile(abs_path) and os.path.getsize(abs_path) > 0:
             return api.uploadImage(abs_path, alt_text)
     return {}
 
