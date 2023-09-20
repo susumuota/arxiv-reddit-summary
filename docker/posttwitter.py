@@ -20,7 +20,7 @@ def upload_first_page_to_twitter(api_v1: tweepy.API, arxiv_id: str):
     with tempfile.TemporaryDirectory() as tmp_dir:
         pdf_filename = utils.download_arxiv_pdf(arxiv_id, tmp_dir)
         first_page_filename = utils.pdf_to_png(pdf_filename)
-        if os.path.isfile(first_page_filename):
+        if os.path.isfile(first_page_filename) and os.path.getsize(first_page_filename) > 0:
             media = api_v1.media_upload(first_page_filename)
             return media.media_id if media else None
     return None
@@ -96,7 +96,7 @@ def upload_html_to_twitter(api_v1: tweepy.API, filename: str, html_text: str):
     with tempfile.TemporaryDirectory() as tmp_dir:
         abs_path = os.path.join(tmp_dir, filename)
         abs_path = utils.html_to_image(html_text, abs_path)
-        if os.path.isfile(abs_path):
+        if os.path.isfile(abs_path) and os.path.getsize(abs_path) > 0:
             media = api_v1.media_upload(abs_path)
             return media.media_id if media else None
     return None

@@ -259,9 +259,9 @@ def main():
     # post
     postslack.post_to_slack(slack_api, slack_channel, dlc, filtered_df, document_df)  # type: ignore
 
-    postbluesky.post_to_bluesky(bluesky_api, dlc, filtered_df, document_df)
-
     posttwitter.post_to_twitter(tweepy_api_v1, tweepy_api_v2, dlc, filtered_df, document_df)
+
+    postbluesky.post_to_bluesky(bluesky_api, dlc, filtered_df, document_df)
 
 
 if __name__ == "__main__":
