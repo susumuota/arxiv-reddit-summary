@@ -46,7 +46,7 @@ def submission_to_dict(submission: praw.reddit.Submission):
     arxiv_ids = parse_arxiv_ids(submission.selftext)
     score = int(submission.score / len(arxiv_ids) if len(arxiv_ids) > 0 else submission.score)
     return {
-        "id": f"https://reddit.com/{submission.id}",
+        "id": f"https://redd.it/{submission.id}",
         "score": score,
         "num_comments": submission.num_comments,
         "created_at": submission.created_utc,
