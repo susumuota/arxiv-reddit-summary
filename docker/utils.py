@@ -64,7 +64,7 @@ def strip(text: str, length: int):
 
 def get_link_type(link: str):
     match link:
-        case x if x.find("reddit.com") != -1:
+        case x if x.find("reddit.com") != -1 or x.find("redd.it") != -1:
             return "Reddit"
         case x if x.find("news.ycombinator.com") != -1:
             return "Hacker News"
