@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 Susumu OTA <1632335+susumuota@users.noreply.github.com>
+# SPDX-FileCopyrightText: 2023-2025 Susumu OTA <1632335+susumuota@users.noreply.github.com>
 # SPDX-License-Identifier: MIT
 
 import os
@@ -66,7 +66,7 @@ def post_to_bluesky_first_page(api: nanoatp.BskyAgent, df: pd.DataFrame, i: int,
     text = f"{first_page_text}"
     patterns = [(arxiv_id, f"https://arxiv.org/abs/{arxiv_id}")]
     facets = generate_facets(text, patterns)
-    embed = {"$type": "app.bsky.embed.images#main", "images": images}
+    embed = {"$type": "app.bsky.embed.images", "images": images}
     record = {"text": utils.strip_tweet(text, 300), "facets": facets, "embed": embed}
     try:
         parent_post = api.post(record)
@@ -102,7 +102,7 @@ def post_to_bluesky_link(api: nanoatp.BskyAgent, root_post: dict[str, str], pare
     facets = generate_facets(text, patterns)
     uri = patterns[0][1]
     external = generate_external(api, uri, title, utils.strip_tweet(" ".join(summary_texts), 300))
-    embed = {"$type": "app.bsky.embed.external#main", "external": external}
+    embed = {"$type": "app.bsky.embed.external", "external": external}
     record = {"text": utils.strip_tweet(text, 300), "facets": facets, "reply": {"root": root_post, "parent": parent_post}, "embed": embed}
     try:
         parent_post = api.post(record)
@@ -121,7 +121,7 @@ def post_to_bluesky_posts(api: nanoatp.BskyAgent, root_post: dict[str, str], par
         patterns = [(link, id)]
         facets = generate_facets(text, patterns)
         external = generate_external(api, id, title, utils.strip_tweet(description, 300))
-        embed = {"$type": "app.bsky.embed.external#main", "external": external}
+        embed = {"$type": "app.bsky.embed.external", "external": external}
         record = {"text": utils.strip_tweet(text, 300), "facets": facets, "reply": {"root": root_post, "parent": parent_post}, "embed": embed}
         try:
             parent_post = api.post(record)
@@ -149,7 +149,7 @@ def post_to_bluesky_trans(api: nanoatp.BskyAgent, root_post: dict[str, str], par
     text = f"{arxiv_id}\n{trans_text}"
     patterns = [(arxiv_id, f"https://arxiv.org/abs/{arxiv_id}")]
     facets = generate_facets(text, patterns)
-    embed = {"$type": "app.bsky.embed.images#main", "images": images}
+    embed = {"$type": "app.bsky.embed.images", "images": images}
     record = {"text": utils.strip_tweet(text, 300), "facets": facets, "reply": {"root": root_post, "parent": parent_post}, "embed": embed}
     try:
         return api.post(record)
@@ -169,7 +169,7 @@ def post_to_bluesky_ranking(api: nanoatp.BskyAgent, dlc: deeplcache.DeepLCache, 
     images.append(image) if image else None
     text = title + " ".join(map(lambda item: f"[{item[0]}]", uris))
     facets = generate_facets(text, uris)
-    embed = {"$type": "app.bsky.embed.images#main", "images": images}
+    embed = {"$type": "app.bsky.embed.images", "images": images}
     record = {"text": utils.strip_tweet(text, 300), "facets": facets, "embed": embed}
     try:
         return api.post(record)
