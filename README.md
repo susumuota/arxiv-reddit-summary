@@ -1,10 +1,11 @@
 # arXiv Reddit Summary
 
-Summarize the top 30 most popular arXiv papers on Reddit and Hacker News in the last 30 days and post them on Slack, Twitter and Bluesky.
+Summarize the top 30 most popular arXiv papers on Reddit, Hacker News and Hugging Face in the last 30 days. And post them to Slack, Twitter and Bluesky.
 
 ## Demo
 
-- https://twitter.com/susumuota
+- https://x.com/susumuota
+- https://bsky.app/profile/paper.bsky.social
 
 ## Google Cloud Run
 
