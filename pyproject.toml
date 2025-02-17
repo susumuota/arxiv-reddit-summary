@@ -1,33 +1,32 @@
 [tool.poetry]
 name = "arxiv-reddit-summary"
-version = "0.6.7"
-description = "Summarize the top 30 most popular arXiv papers on Reddit and Hacker News in the last 30 days and post them on Slack, Twitter and Bluesky."
+version = "0.6.8"
+description = "Summarize the top 30 most popular arXiv papers on Reddit, Hacker News and Hugging Face in the last 30 days. And post them to Slack, Twitter and Bluesky."
 authors = ["Susumu OTA <1632335+susumuota@users.noreply.github.com>"]
 license = "MIT"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.10"
-praw = "^7.7.1"
-pandas = "^2.1.0"
-arxiv = "^1.4.8"
-tweepy = "^4.14.0"
-python-dateutil = "^2.8.2"
+python = "^3.11"
+praw = "^7.8.1"
+pandas = "^2.2.3"
+arxiv = "^2.1.3"
+tweepy = "^4.15.0"
+python-dateutil = "^2.9.0.post0"
 imgkit = "^1.2.3"
-google-cloud-storage = "^2.10.0"
-deepl = "^1.15.0"
+google-cloud-storage = "^3.0.0"
+deepl = "^1.21.0"
 pysbd = "^0.3.4"
-slack-sdk = "^3.21.3"
-nanoatp = "^0.4.1"
-requests = "^2.31.0"
-beautifulsoup4 = "^4.12.2"
+slack-sdk = "^3.34.0"
+nanoatp = "^0.5.1"
+requests = "^2.32.3"
+beautifulsoup4 = "^4.13.3"
 
 
 [tool.poetry.group.dev.dependencies]
-jupyterlab = "^4.0.4"
-black = "^23.7.0"
-flake8 = "^6.1.0"
-isort = "^5.12.0"
+black = "^25.1.0"
+flake8 = "^7.1.2"
+isort = "^6.0.0"
 
 [build-system]
 requires = ["poetry-core"]
