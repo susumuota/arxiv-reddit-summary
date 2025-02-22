@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "arxiv-reddit-summary"
-version = "0.6.8"
+version = "0.6.9"
 description = "Summarize the top 30 most popular arXiv papers on Reddit, Hacker News and Hugging Face in the last 30 days. And post them to Slack, Twitter and Bluesky."
 authors = ["Susumu OTA <1632335+susumuota@users.noreply.github.com>"]
 license = "MIT"
@@ -27,6 +27,7 @@ beautifulsoup4 = "^4.13.3"
 black = "^25.1.0"
 flake8 = "^7.1.2"
 isort = "^6.0.0"
+ipykernel = "^6.29.5"
 
 [build-system]
 requires = ["poetry-core"]
