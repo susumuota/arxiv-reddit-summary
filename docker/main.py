@@ -184,15 +184,27 @@ def filter_df(df: pd.DataFrame, top_n=10, days=365):
 
 
 def summarize(query, time_filter="month", days=30, limit=300):
-    print("search_reddit...")
-    reddit_document_df = search_reddit(f"selftext:{query}", sort="top", time_filter=time_filter, limit=limit)
-    print("search_reddit...done: ", len(reddit_document_df))
-    print("search_hackernews...")
-    hackernews_document_df = search_hackernews(query, attribute="url", days=days, limit=limit)
-    print("search_hackernews...done: ", len(hackernews_document_df))
-    print("search_huggingface...")
-    search_huggingface_df = search_huggingface(days=days)
-    print("search_huggingface...done: ", len(search_huggingface_df))
+    try:
+        print("search_reddit...")
+        reddit_document_df = search_reddit(f"selftext:{query}", sort="top", time_filter=time_filter, limit=limit)
+        print("search_reddit...done: ", len(reddit_document_df))
+    except Exception as e:
+        print(e)
+        reddit_document_df = pd.json_normalize([])
+    try:
+        print("search_hackernews...")
+        hackernews_document_df = search_hackernews(query, attribute="url", days=days, limit=limit)
+        print("search_hackernews...done: ", len(hackernews_document_df))
+    except Exception as e:
+        print(e)
+        hackernews_document_df = pd.json_normalize([])
+    try:
+        print("search_huggingface...")
+        search_huggingface_df = search_huggingface(days=days)
+        print("search_huggingface...done: ", len(search_huggingface_df))
+    except Exception as e:
+        print(e)
+        search_huggingface_df = pd.json_normalize([])
     document_df = pd.concat([reddit_document_df, hackernews_document_df, search_huggingface_df], ignore_index=True).sort_values(by=["score", "num_comments"], ascending=False).reset_index(drop=True)
     print("document_df: ", len(document_df))
     stats_df = get_arxiv_stats(document_df)
