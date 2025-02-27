@@ -29,7 +29,8 @@ from bs4 import BeautifulSoup, Tag
 from google.cloud import storage
 
 
-ARXIV_URL_PATTERN = re.compile(r"https?://arxiv\.org/(abs|pdf)/([0-9]{4}\.[0-9]{4,6})(v[0-9]+)?(\.pdf)?")
+# https://info.arxiv.org/help/arxiv_identifier.html
+ARXIV_URL_PATTERN = re.compile(r"https?://arxiv\.org/(abs|pdf)/([0-9]{4}\.[0-9]{4,5})(v[0-9]+)?(\.pdf)?")
 
 
 def parse_arxiv_ids(text: str) -> list[str]:
