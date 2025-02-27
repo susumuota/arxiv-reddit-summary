@@ -103,6 +103,6 @@ def post_to_slack(api: slack_sdk.WebClient, channel: str, dlc: deeplcache.DeepLC
             time.sleep(1)
         post_to_slack_authors(api, channel, title, ts, authors, comment, arxiv_id)
         time.sleep(1)
-        top_n_documents = document_df[document_df["arxiv_id"].apply(lambda ids: arxiv_id in ids)].head(5)
+        top_n_documents = document_df[document_df["arxiv_id"].apply(lambda ids: arxiv_id in ids)].head(3)  # TODO
         post_to_slack_documents(api, channel, ts, top_n_documents)
         print("post_to_slack: ", f"[{len(df)-i}/{len(df)}]")

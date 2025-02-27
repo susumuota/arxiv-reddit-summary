@@ -154,7 +154,7 @@ def post_to_twitter(api_v1: tweepy.API, api_v2: tweepy.Client, dlc: deeplcache.D
         time.sleep(1)
         if not prev_tweet_id:
             continue
-        top_n_documents = document_df[document_df["arxiv_id"].apply(lambda ids: arxiv_id in ids)].head(5)
+        top_n_documents = document_df[document_df["arxiv_id"].apply(lambda ids: arxiv_id in ids)].head(3)  # TODO
         link_type = utils.get_link_type(top_n_documents.iloc[0]["id"])
         prev_tweet_id = post_to_twitter_link(api_v2, prev_tweet_id, arxiv_id, link_type)
         time.sleep(1)
