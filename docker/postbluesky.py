@@ -41,7 +41,7 @@ def upload_first_page_to_bluesky(api: nanoatp.BskyAgent, arxiv_id: str, summary_
         pdf_filename = utils.download_arxiv_pdf(arxiv_id, tmp_dir)
         first_page_filename = utils.pdf_to_png(pdf_filename)
         if os.path.isfile(first_page_filename) and os.path.getsize(first_page_filename) > 0:
-            return api.uploadImage(first_page_filename, summary_text)
+            return api.uploadImage(first_page_filename, utils.strip_tweet(summary_text, 2000))
     return {}
 
 
@@ -53,7 +53,7 @@ def generate_bluesky_first_page(df: pd.DataFrame, i: int, is_new: bool, arxiv_id
     stats_md = f"{score} Likes, {num_comments} Comments, {count} Posts"
     updated_md = dateutil.parser.isoparse(updated).strftime("%d %b %Y")
     title_md = title
-    text = f"[{len(df)-i}/{len(df)}] {stats_md}\n{arxiv_id}, {categories_md}, {updated_md}\n\n{new_md}{title_md}\n\n{authors_md}"
+    text = f"[{len(df) - i}/{len(df)}] {stats_md}\n{arxiv_id}, {categories_md}, {updated_md}\n\n{new_md}{title_md}\n\n{authors_md}"
     return text, summary_text
 
 
@@ -136,7 +136,7 @@ def upload_html_to_bluesky(api: nanoatp.BskyAgent, filename: str, html_text: str
         abs_path = os.path.join(tmp_dir, filename)
         abs_path = utils.html_to_image(html_text, abs_path, quality)
         if os.path.isfile(abs_path) and os.path.getsize(abs_path) > 0:
-            return api.uploadImage(abs_path, alt_text)
+            return api.uploadImage(abs_path, utils.strip_tweet(alt_text, 2000))
     return {}
 
 
@@ -144,7 +144,7 @@ def post_to_bluesky_trans(api: nanoatp.BskyAgent, root_post: dict[str, str], par
     html_text = generatehtml.generate_trans_html(arxiv_id, title, authors, trans_texts, summary_texts)
     trans_text = "".join(trans_texts)
     images = []
-    image = upload_html_to_bluesky(api, f"{arxiv_id}.trans.jpg", html_text, utils.strip_tweet(trans_text, 300))
+    image = upload_html_to_bluesky(api, f"{arxiv_id}.trans.jpg", html_text, trans_text)
     images.append(image) if image else None
     text = f"{arxiv_id}\n{trans_text}"
     patterns = [(arxiv_id, f"https://arxiv.org/abs/{arxiv_id}")]
@@ -162,9 +162,9 @@ def post_to_bluesky_ranking(api: nanoatp.BskyAgent, dlc: deeplcache.DeepLCache, 
     title = f"Top {len(df)} most popular arXiv papers in the last 30 days.\n"
     date = datetime.now(timezone.utc).strftime("%d %b %Y")
     html_text = generatehtml.generate_top_n_html(title, date, df, dlc)
-    uris = list(map(lambda item: (f"{item[0]+1}/{len(df)}", f"https://arxiv.org/abs/{item[1][0]}"), enumerate(zip(df[::-1]["arxiv_id"]))))
+    uris = list(map(lambda item: (f"{item[0] + 1}/{len(df)}", f"https://arxiv.org/abs/{item[1][0]}"), enumerate(zip(df[::-1]["arxiv_id"]))))
     alt_text = "\n".join(map(lambda item: " ".join(item), uris))
-    image = upload_html_to_bluesky(api, "top_n.jpg", html_text, utils.strip_tweet(alt_text, 300), 90)  # sometimes the image is too large to upload
+    image = upload_html_to_bluesky(api, "top_n.jpg", html_text, alt_text, 90)  # sometimes the image is too large to upload
     images = []
     images.append(image) if image else None
     text = title + " ".join(map(lambda item: f"[{item[0]}]", uris))
@@ -203,6 +203,6 @@ def post_to_bluesky(api: nanoatp.BskyAgent, dlc: deeplcache.DeepLCache, df: pd.D
         parent_post = post_to_bluesky_link(api, root_post, parent_post, arxiv_id, title, summary_texts)
         time.sleep(1)
         post_to_bluesky_trans(api, root_post, parent_post, arxiv_id, title, authors, summary_texts, trans_texts)
-        print("post_to_bluesky: ", f"[{len(df)-i}/{len(df)}]")
+        print("post_to_bluesky: ", f"[{len(df) - i}/{len(df)}]")
         time.sleep(1)
     return post_to_bluesky_ranking(api, dlc, df)
