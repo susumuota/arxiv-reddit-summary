@@ -60,7 +60,7 @@ def generate_bluesky_first_page(df: pd.DataFrame, i: int, is_new: bool, arxiv_id
 def post_to_bluesky_first_page(api: nanoatp.BskyAgent, df: pd.DataFrame, i: int, is_new: bool, arxiv_id: str, updated: str, title: str, summary_texts: list[str], authors: list[str], score: int, num_comments: int, count: int, primary_category: str, categories: list[str]):
     first_page_text, summary_text = generate_bluesky_first_page(df, i, is_new, arxiv_id, updated, title, summary_texts, authors, score, num_comments, count, primary_category, categories)
     images = []
-    image = upload_first_page_to_bluesky(api, arxiv_id, utils.strip_tweet(summary_text, 300))
+    image = upload_first_page_to_bluesky(api, arxiv_id, summary_text)
     images.append(image) if image else None
     parent_post: dict[str, str] = {}
     text = f"{first_page_text}"
