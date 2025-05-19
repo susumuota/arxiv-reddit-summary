@@ -28,7 +28,6 @@ import tweepy
 from bs4 import BeautifulSoup, Tag
 from google.cloud import storage
 
-
 # https://info.arxiv.org/help/arxiv_identifier.html
 ARXIV_URL_PATTERN = re.compile(r"https?://arxiv\.org/(abs|pdf)/([0-9]{4}\.[0-9]{4,5})(v[0-9]+)?(\.pdf)?")
 
@@ -114,6 +113,7 @@ def scrape_huggingface(timestamp: float, wait: int = 1):
     """https://huggingface.co/papers"""
     date = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d")
     response = requests.get(f"https://huggingface.co/papers?date={date}")
+    print(f"returns {response.status_code}, {len(response.text)} characters at {date}")
     soup = BeautifulSoup(response.text, "html.parser")
     articles = soup.select("article")
     result = [article_to_dict(article, timestamp) for article in articles]

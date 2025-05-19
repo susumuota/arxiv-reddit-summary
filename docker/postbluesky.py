@@ -98,8 +98,9 @@ def post_to_bluesky_link(api: nanoatp.BskyAgent, root_post: dict[str, str], pare
         ("Reddit", f"https://www.reddit.com/search/?q=%22{arxiv_id}%22&sort=top"),
         ("Hacker News", f"https://hn.algolia.com/?query=%22{arxiv_id}%22&type=all"),
         ("Hugging Face", f"https://huggingface.co/papers/{arxiv_id}"),
+        ("alphaXiv", f"https://www.alphaxiv.org/overview/{arxiv_id}"),
     ]
-    text = "Links: abs, pdf\nSearch: Bluesky, Twitter, Reddit, Hacker News, Hugging Face"
+    text = "Links: abs, pdf\nSearch: Bluesky, Twitter, Reddit, Hacker News, Hugging Face, alphaXiv"
     facets = generate_facets(text, patterns)
     uri = patterns[0][1]
     external = generate_external(api, uri, title, utils.strip_tweet(" ".join(summary_texts), 300))
@@ -145,7 +146,7 @@ def post_to_bluesky_trans(api: nanoatp.BskyAgent, root_post: dict[str, str], par
     html_text = generatehtml.generate_trans_html(arxiv_id, title, authors, trans_texts, summary_texts)
     trans_text = "".join(trans_texts)
     images = []
-    image = upload_html_to_bluesky(api, f"{arxiv_id}.trans.jpg", html_text, trans_text)
+    image = upload_html_to_bluesky(api, f"{arxiv_id}.trans.jpg", html_text, "\n\n".join(trans_texts))
     images.append(image) if image else None
     text = f"{arxiv_id}\n{trans_text}"
     patterns = [(arxiv_id, f"https://arxiv.org/abs/{arxiv_id}")]
