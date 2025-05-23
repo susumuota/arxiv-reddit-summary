@@ -46,7 +46,7 @@ def upload_first_page_to_bluesky(api: nanoatp.BskyAgent, arxiv_id: str, summary_
 
 
 def generate_bluesky_first_page(df: pd.DataFrame, i: int, is_new: bool, arxiv_id: str, updated: str, title: str, summary_texts: list[str], authors: list[str], score: int, num_comments: int, count: int, primary_category: str, categories: list[str]):
-    summary_text = " ".join(summary_texts)
+    summary_text = "\n\n".join(summary_texts)
     new_md = "🆕" if is_new else ""
     authors_md = ", ".join(authors)
     categories_md = utils.avoid_auto_link(" | ".join([primary_category] + [c for c in categories if c != primary_category and re.match(r"\w+\.\w+$", c)]))
@@ -98,7 +98,7 @@ def post_to_bluesky_link(api: nanoatp.BskyAgent, root_post: dict[str, str], pare
         ("Reddit", f"https://www.reddit.com/search/?q=%22{arxiv_id}%22&sort=top"),
         ("Hacker News", f"https://hn.algolia.com/?query=%22{arxiv_id}%22&type=all"),
         ("Hugging Face", f"https://huggingface.co/papers/{arxiv_id}"),
-        ("alphaXiv", f"https://www.alphaxiv.org/overview/{arxiv_id}"),
+        ("alphaXiv", f"https://www.alphaxiv.org/abs/{arxiv_id}"),
     ]
     text = "Links: abs, pdf\nSearch: Bluesky, Twitter, Reddit, Hacker News, Hugging Face, alphaXiv"
     facets = generate_facets(text, patterns)

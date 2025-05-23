@@ -25,7 +25,7 @@ def generate_slack_title_blocks(df: pd.DataFrame, i: int, is_new: bool, title: s
     stats_md = f"_*{score}* Likes, {num_comments} Comments, {count} Posts_"
     categories_md = utils.avoid_auto_link(" | ".join([primary_category] + [c for c in categories if c != primary_category and re.match(r"\w+\.\w+$", c)]))
     updated_md = dateutil.parser.isoparse(updated).strftime("%d %b %Y")
-    return [{"type": "section", "text": {"type": "mrkdwn", "text": f"[{len(df)-i}/{len(df)}] {new_md}*{title_md}*\n{stats_md}, {categories_md}, {updated_md}\n{first_summary}"}}]
+    return [{"type": "section", "text": {"type": "mrkdwn", "text": f"[{len(df) - i}/{len(df)}] {new_md}*{title_md}*\n{stats_md}, {categories_md}, {updated_md}\n{first_summary}"}}]
 
 
 def generate_slack_summary(dlc: deeplcache.DeepLCache, seg: pysbd.Segmenter, twenty_three_hours_ago: datetime, arxiv_id: str, summary: str):
@@ -70,7 +70,8 @@ def post_to_slack_authors(api: slack_sdk.WebClient, channel: str, title: str, ts
     reddit_md = f"<https://www.reddit.com/search/?q=%22{arxiv_id}%22&sort=top|Reddit>"
     hackernews_md = f"<https://hn.algolia.com/?query=%22{arxiv_id}%22&type=all|HackerNews>"
     huggingface_md = f"<https://huggingface.co/papers/{arxiv_id}|HuggingFace>"
-    blocks = [{"type": "section", "text": {"type": "mrkdwn", "text": f"*Links*: {abs_md}, {pdf_md}, {twitter_md}, {reddit_md}, {hackernews_md}, {huggingface_md}\n\n*Authors*: {authors_md}{comment_md}"}}]
+    alphaxiv_md = f"<https://www.alphaxiv.org/abs/{arxiv_id}|alphaXiv>"
+    blocks = [{"type": "section", "text": {"type": "mrkdwn", "text": f"*Links*: {abs_md}, {pdf_md}, {twitter_md}, {reddit_md}, {hackernews_md}, {huggingface_md}, {alphaxiv_md}\n\n*Authors*: {authors_md}{comment_md}"}}]
     title_md = utils.strip(title, 200)
     return api.chat_postMessage(channel=channel, text=title_md, blocks=blocks, thread_ts=ts)
 
@@ -81,7 +82,7 @@ def post_to_slack_documents(api: slack_sdk.WebClient, channel: str, ts: str, df:
         stats_md = f"_*{score}* Likes, {num_comments} Comments_"
         created_at_md = datetime.fromtimestamp(created_at).strftime("%d %b %Y")
         url_md = f"<{id}|{created_at_md}>"
-        blocks = [{"type": "section", "text": {"type": "mrkdwn", "text": f"({i+1}/{len(df)}) {stats_md}, {url_md}\n"}}]
+        blocks = [{"type": "section", "text": {"type": "mrkdwn", "text": f"({i + 1}/{len(df)}) {stats_md}, {url_md}\n"}}]
         api.chat_postMessage(channel=channel, text=url_md, thread_ts=ts, blocks=blocks)
         time.sleep(1)
 
@@ -105,4 +106,4 @@ def post_to_slack(api: slack_sdk.WebClient, channel: str, dlc: deeplcache.DeepLC
         time.sleep(1)
         top_n_documents = document_df[document_df["arxiv_id"].apply(lambda ids: arxiv_id in ids)].head(3)  # TODO
         post_to_slack_documents(api, channel, ts, top_n_documents)
-        print("post_to_slack: ", f"[{len(df)-i}/{len(df)}]")
+        print("post_to_slack: ", f"[{len(df) - i}/{len(df)}]")

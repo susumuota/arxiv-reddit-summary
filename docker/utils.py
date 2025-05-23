@@ -70,5 +70,7 @@ def get_link_type(link: str):
             return "Hacker News"
         case x if x.find("huggingface.co") != -1:
             return "Hugging Face"
+        case x if x.find("alphaxiv.org") != -1:
+            return "alphaXiv"
         case _:
             return ""
