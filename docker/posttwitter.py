@@ -35,7 +35,7 @@ def generate_twitter_first_page(df: pd.DataFrame, i: int, is_new: bool, arxiv_id
     updated_md = dateutil.parser.isoparse(updated).strftime("%d %b %Y")
     title_md = title
     abs_md = f"https://arxiv.org/abs/{arxiv_id}"
-    text = f"[{len(df)-i}/{len(df)}] {stats_md}\n{abs_md} {categories_md}, {updated_md}\n\n{new_md}{title_md}\n\n{authors_md}"
+    text = f"[{len(df) - i}/{len(df)}] {stats_md}\n{abs_md} {categories_md}, {updated_md}\n\n{new_md}{title_md}\n\n{authors_md}"
     return text, summary_text
 
 
@@ -59,12 +59,10 @@ def post_to_twitter_link(api_v2: tweepy.Client, prev_tweet_id: str, arxiv_id: st
     twitter_uri = f"https://x.com/search?q=arxiv.org%2Fabs%2F{arxiv_id}%20OR%20arxiv.org%2Fpdf%2F{arxiv_id}.pdf"
     reddit_uri = f"https://www.reddit.com/search/?q=%22{arxiv_id}%22&sort=top"
     hackernews_uri = f"https://hn.algolia.com/?query=%22{arxiv_id}%22&type=all"
-    # huggingface_uri = f"https://huggingface.co/papers/{arxiv_id}"
     # the last uri will become a link card
     text = f"Twitter: {twitter_uri}"
     text = f"Twitter: {twitter_uri} \nReddit: {reddit_uri}" if link_type == "Reddit" else text
     text = f"Twitter: {twitter_uri} \nHacker News: {hackernews_uri}" if link_type == "Hacker News" else text
-    # text = f"Twitter: {twitter_uri} \nHugging Face: {huggingface_uri}" if link_type == "Hugging Face" else text
     try:
         response = api_v2.create_tweet(text=utils.strip_tweet(text, 280), user_auth=True, in_reply_to_tweet_id=prev_tweet_id)
         prev_tweet_id = response.data["id"] if type(response) is tweepy.Response and not response.errors else ""
@@ -110,7 +108,7 @@ def post_to_twitter_ranking(api_v1: tweepy.API, api_v2: tweepy.Client, dlc: deep
     top_n_media_id = upload_html_to_twitter(api_v1, "top_n.jpg", html_text)
     if top_n_media_id:
         rev_df = df[::-1]
-        metadata = "\n".join(map(lambda item: f"[{item[0]+1}/{len(df)}] arxiv.org/abs/{item[1][0]}", enumerate(zip(rev_df["arxiv_id"]))))
+        metadata = "\n".join(map(lambda item: f"[{item[0] + 1}/{len(df)}] arxiv.org/abs/{item[1][0]}", enumerate(zip(rev_df["arxiv_id"]))))
         api_v1.create_media_metadata(top_n_media_id, utils.strip_tweet(metadata, 1000))
         media_ids.append(top_n_media_id)
     text = title
@@ -162,6 +160,6 @@ def post_to_twitter(api_v1: tweepy.API, api_v2: tweepy.Client, dlc: deeplcache.D
             continue
         prev_tweet_id = post_to_twitter_tweets(api_v2, prev_tweet_id, top_n_documents)
         post_to_twitter_trans(api_v1, api_v2, prev_tweet_id, arxiv_id, title, authors, summary_texts, trans_texts)
-        print("post_to_twitter: ", f"[{len(df)-i}/{len(df)}]")
+        print("post_to_twitter: ", f"[{len(df) - i}/{len(df)}]")
         time.sleep(1)
     post_to_twitter_ranking(api_v1, api_v2, dlc, df)

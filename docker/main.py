@@ -133,6 +133,36 @@ def search_huggingface(days: int = 30):
     return df.drop_duplicates(subset=["id"], keep="last").reset_index(drop=True)
 
 
+def paper_to_dict(paper: Tag):
+    """https://www.alphaxiv.org/explore?sort=Likes&time=30+Days"""
+    a = paper.select_one('a[data-sentry-source-file="PaperFeedCard.tsx"]')
+    href = a["href"]
+    arxiv_id = href.split("/")[-1]
+    score = paper.select_one('button > p[class="text-[17px]"]').text
+    created_at = datetime.strptime(paper.select_one('div[class*="text-[11px]"]').text, "%d %b %Y").timestamp()
+    title = paper.select_one("h2 > div > div").text
+    description = paper.select_one('div > p[class*="text-[15px]"]').text
+    return {
+        "id": f"https://www.alphaxiv.org/abs/{arxiv_id}",
+        "score": score,
+        "num_comments": 0,
+        "created_at": created_at,
+        "arxiv_id": [arxiv_id],
+        "title": title,
+        "description": description,
+    }
+
+
+def search_alphaxiv():
+    """https://www.alphaxiv.org/explore?sort=Likes&time=30+Days"""
+    response = requests.get("https://www.alphaxiv.org/explore?sort=Likes&time=30+Days")
+    print(f"returns {response.status_code}, {len(response.text)} characters")
+    soup = BeautifulSoup(response.text, "html.parser")
+    papers = soup.select('div[data-sentry-component="PaperContentWithImage"]')
+    print(f"scraped {len(papers)} papers")
+    return pd.json_normalize([paper_to_dict(paper) for paper in papers])
+
+
 def get_arxiv_stats(document_df: pd.DataFrame):
     return document_df.explode("arxiv_id").groupby("arxiv_id").agg(score=("score", "sum"), num_comments=("num_comments", "sum"), count=("id", "count"), document_id=("id", pd.Series.to_list)).sort_values(by=["score", "num_comments", "count"], ascending=False).reset_index()
 
@@ -206,7 +236,14 @@ def summarize(query, time_filter="month", days=30, limit=300):
     except Exception as e:
         print(e)
         search_huggingface_df = pd.json_normalize([])
-    document_df = pd.concat([reddit_document_df, hackernews_document_df, search_huggingface_df], ignore_index=True).sort_values(by=["score", "num_comments"], ascending=False).reset_index(drop=True)
+    try:
+        print("search_alphaxiv...")
+        search_alphaxiv_df = search_alphaxiv()
+        print("search_alphaxiv...done: ", len(search_alphaxiv_df))
+    except Exception as e:
+        print(e)
+        search_alphaxiv_df = pd.json_normalize([])
+    document_df = pd.concat([reddit_document_df, hackernews_document_df, search_huggingface_df, search_alphaxiv_df], ignore_index=True).sort_values(by=["score", "num_comments"], ascending=False).reset_index(drop=True)
     print("document_df: ", len(document_df))
     stats_df = get_arxiv_stats(document_df)
     print("stats_df: ", len(stats_df))
