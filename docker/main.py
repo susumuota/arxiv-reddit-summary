@@ -26,6 +26,7 @@ import requests
 import slack_sdk
 import tweepy
 from bs4 import BeautifulSoup, Tag
+from dateutil.relativedelta import relativedelta
 from google.cloud import storage
 
 # https://info.arxiv.org/help/arxiv_identifier.html
@@ -94,6 +95,7 @@ def article_to_dict(article: Tag, created_at: float):
     """https://huggingface.co/papers"""
     h3_a = article.select_one("h3 > a")
     arxiv_id = "" if h3_a is None else str(h3_a["href"].split("/")[-1])  # TODO: check if arxiv_id is valid
+    title = "" if h3_a is None else h3_a.text
     score_div = article.select_one("div[class^=leading]")  # TODO: better selector
     score = 0 if score_div is None else int(score_div.text) if re.match(r"^\d+$", score_div.text) else 0
     num_comments_a = article.select_one("a[href$='#community']")
@@ -104,28 +106,28 @@ def article_to_dict(article: Tag, created_at: float):
         "num_comments": num_comments,
         "created_at": created_at,
         "arxiv_id": [arxiv_id],
-        "title": h3_a.text,
+        "title": title,
         "description": f"https://arxiv.org/abs/{arxiv_id}",
     }
 
 
 def scrape_huggingface(timestamp: float, wait: int = 1):
     """https://huggingface.co/papers"""
-    date = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d")
-    response = requests.get(f"https://huggingface.co/papers?date={date}")
-    print(f"returns {response.status_code}, {len(response.text)} characters at {date}")
+    year_month = datetime.fromtimestamp(timestamp).strftime("%Y-%m")
+    response = requests.get(f"https://huggingface.co/papers/month/{year_month}")
+    print(f"returns {response.status_code}, {len(response.text)} characters at {year_month}")
     soup = BeautifulSoup(response.text, "html.parser")
     articles = soup.select("article")
     result = [article_to_dict(article, timestamp) for article in articles]
-    print(f"scraped {len(result)} articles from {date}")
+    print(f"scraped {len(result)} articles from {year_month}")
     time.sleep(wait)
     return result
 
 
-def search_huggingface(days: int = 30):
+def search_huggingface(months: int = 2):
     """https://huggingface.co/papers"""
     now = datetime.now()
-    timestamps = [(now - timedelta(days=d)).timestamp() for d in range(days)]
+    timestamps = [(now - relativedelta(months=m)).timestamp() for m in range(months)]
     df = pd.json_normalize(flatten([scrape_huggingface(ts) for ts in timestamps]))
     # sometimes there are no articles for a given date.
     # in that case, HF returns the article from the previous day.
@@ -231,7 +233,7 @@ def summarize(query, time_filter="month", days=30, limit=300):
         hackernews_document_df = pd.json_normalize([])
     try:
         print("search_huggingface...")
-        search_huggingface_df = search_huggingface(days=days)
+        search_huggingface_df = search_huggingface(months=2)
         print("search_huggingface...done: ", len(search_huggingface_df))
     except Exception as e:
         print(e)
