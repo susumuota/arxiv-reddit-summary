@@ -136,15 +136,14 @@ def search_huggingface(days: int = 30):
 def paper_to_dict(paper: Tag):
     """https://www.alphaxiv.org/explore?sort=Likes&time=30+Days"""
     a = paper.select_one('a[data-sentry-source-file="PaperFeedCard.tsx"]')
-    href = a["href"]
-    arxiv_id = "" if a is None else href.split("/")[-1]  # TODO: check if arxiv_id is valid
+    arxiv_id = "" if a is None else a["href"].split("/")[-1]  # TODO: check if arxiv_id is valid
     score_div = paper.select_one('button > p[class="text-[17px]"]')  # TODO: better selector
     score = 0 if score_div is None else int(score_div.text) if re.match(r"^\d+$", score_div.text) else 0
     created_at = datetime.strptime(paper.select_one('div[class*="text-[11px]"]').text, "%d %b %Y").timestamp()
     title = paper.select_one("h2 > div > div").text
     description = paper.select_one('div > p[class*="text-[15px]"]').text
     return {
-        "id": f"https://www.alphaxiv.org{href}",
+        "id": f"https://www.alphaxiv.org/abs/{arxiv_id}",
         "score": score,
         "num_comments": 0,
         "created_at": created_at,
