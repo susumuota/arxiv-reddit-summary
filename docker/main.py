@@ -26,7 +26,6 @@ import requests
 import slack_sdk
 import tweepy
 from bs4 import BeautifulSoup, Tag
-from dateutil.relativedelta import relativedelta
 from google.cloud import storage
 
 # https://info.arxiv.org/help/arxiv_identifier.html
@@ -91,48 +90,42 @@ def search_hackernews(query: str, attribute="", days=0, limit: int | None = None
     return pd.json_normalize([hit_to_dict(hit) for hit in json["hits"]])
 
 
-def article_to_dict(article: Tag, created_at: float):
-    """https://huggingface.co/papers"""
-    h3_a = article.select_one("h3 > a")
-    arxiv_id = "" if h3_a is None else str(h3_a["href"].split("/")[-1])  # TODO: check if arxiv_id is valid
-    title = "" if h3_a is None else h3_a.text
-    score_div = article.select_one("div[class^=leading]")  # TODO: better selector
-    score = 0 if score_div is None else int(score_div.text) if re.match(r"^\d+$", score_div.text) else 0
-    num_comments_a = article.select_one("a[href$='#community']")
-    num_comments = 0 if num_comments_a is None else int(num_comments_a.text)
+def article_to_dict(article: dict):
+    """https://huggingface.co/docs/hub/en/api#get-apidailypapers"""
+    arxiv_id = article["paper"]["id"]
     return {
         "id": f"https://huggingface.co/papers/{arxiv_id}",
-        "score": score,
-        "num_comments": num_comments,
-        "created_at": created_at,
+        "score": article["paper"]["upvotes"],
+        "num_comments": article["numComments"],
+        "created_at": article["paper"]["submittedOnDailyAt"],
         "arxiv_id": [arxiv_id],
-        "title": title,
-        "description": f"https://arxiv.org/abs/{arxiv_id}",
+        "title": article["title"],
+        "description": article["summary"],
     }
 
 
-def scrape_huggingface(timestamp: float, wait: int = 1):
-    """https://huggingface.co/papers"""
-    year_month = datetime.fromtimestamp(timestamp).strftime("%Y-%m")
-    response = requests.get(f"https://huggingface.co/papers/month/{year_month}")
-    print(f"returns {response.status_code}, {len(response.text)} characters at {year_month}")
-    soup = BeautifulSoup(response.text, "html.parser")
-    articles = soup.select("article")
-    result = [article_to_dict(article, timestamp) for article in articles]
-    print(f"scraped {len(result)} articles from {year_month}")
+def get_huggingface(timestamp: float, wait: int = 1):
+    """https://huggingface.co/docs/hub/en/api#get-apidailypapers"""
+    date = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d")
     time.sleep(wait)
-    return result
+    response = requests.get(f"https://huggingface.co/api/daily_papers?date={date}")
+    print(f"Status code {response.status_code}, {len(response.text)} characters at {date}")
+    if response.status_code != 200:
+        print(f"Failed to fetch data for {date}: {response.status_code}")
+        return []
+    articles = response.json()
+    if not articles or "error" in articles or not isinstance(articles, list):
+        print(f"No articles found for {date} or error in response.")
+        return []
+    print(f"Got {len(articles)} articles from {date}")
+    return [article_to_dict(article) for article in articles]
 
 
-def search_huggingface(months: int = 2):
-    """https://huggingface.co/papers"""
+def search_huggingface(days: int = 30, wait: int = 1):
+    """https://huggingface.co/docs/hub/en/api#get-apidailypapers"""
     now = datetime.now()
-    timestamps = [(now - relativedelta(months=m)).timestamp() for m in range(months)]
-    df = pd.json_normalize(flatten([scrape_huggingface(ts) for ts in timestamps]))
-    # sometimes there are no articles for a given date.
-    # in that case, HF returns the article from the previous day.
-    # so we need to drop duplicates.
-    return df.drop_duplicates(subset=["id"], keep="last").reset_index(drop=True)
+    timestamps = [(now - timedelta(days=d)).timestamp() for d in range(days)]
+    return pd.json_normalize(flatten([get_huggingface(ts, wait) for ts in timestamps]))
 
 
 def paper_to_dict(paper: Tag):
