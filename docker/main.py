@@ -25,7 +25,6 @@ import pysbd
 import requests
 import slack_sdk
 import tweepy
-from bs4 import BeautifulSoup, Tag
 from google.cloud import storage
 
 # https://info.arxiv.org/help/arxiv_identifier.html
@@ -104,7 +103,7 @@ def article_to_dict(article: dict):
     }
 
 
-def get_huggingface(timestamp: float, wait: int = 1):
+def get_huggingface(timestamp: float, wait=1):
     """https://huggingface.co/docs/hub/en/api#get-apidailypapers"""
     date = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d")
     time.sleep(wait)
@@ -121,41 +120,48 @@ def get_huggingface(timestamp: float, wait: int = 1):
     return [article_to_dict(article) for article in articles]
 
 
-def search_huggingface(days: int = 30, wait: int = 1):
+def search_huggingface(days=30, wait=1):
     """https://huggingface.co/docs/hub/en/api#get-apidailypapers"""
     now = datetime.now()
     timestamps = [(now - timedelta(days=d)).timestamp() for d in range(days)]
     return pd.json_normalize(flatten([get_huggingface(ts, wait) for ts in timestamps]))
 
 
-def paper_to_dict(paper: Tag):
+def paper_to_dict(paper: dict):
     """https://www.alphaxiv.org/explore?sort=Likes&time=30+Days"""
-    a = paper.select_one('a[data-sentry-source-file="PaperFeedCard.tsx"]')
-    arxiv_id = "" if a is None else a["href"].split("/")[-1]  # TODO: check if arxiv_id is valid
-    score_div = paper.select_one('button > p[class="text-[17px]"]')  # TODO: better selector
-    score = 0 if score_div is None else int(score_div.text) if re.match(r"^\d+$", score_div.text) else 0
-    created_at = datetime.strptime(paper.select_one('div[class*="text-[11px]"]').text, "%d %b %Y").timestamp()
-    title = paper.select_one("h2 > div > div").text
-    description = paper.select_one('div > p[class*="text-[15px]"]').text
+    arxiv_id = paper["universal_paper_id"]
     return {
         "id": f"https://www.alphaxiv.org/abs/{arxiv_id}",
-        "score": score,
-        "num_comments": 0,
-        "created_at": created_at,
+        "score": paper["metrics"]["public_total_votes"],
+        "num_comments": 0,  # TODO: find the number of comments
+        "created_at": paper["created_at"],
         "arxiv_id": [arxiv_id],
-        "title": title,
-        "description": description,
+        "title": paper["title"],
+        "description": paper["abstract"],
     }
 
 
-def search_alphaxiv():
+def get_alphaxiv(sort_by="Likes", interval="30+Days", page_size=10, page_num=0, wait=1):
     """https://www.alphaxiv.org/explore?sort=Likes&time=30+Days"""
-    response = requests.get("https://www.alphaxiv.org/explore?sort=Likes&time=30+Days")
-    print(f"returns {response.status_code}, {len(response.text)} characters")
-    soup = BeautifulSoup(response.text, "html.parser")
-    papers = soup.select('div[data-sentry-component="PaperContentWithImage"]')
-    print(f"scraped {len(papers)} papers")
-    return pd.json_normalize([paper_to_dict(paper) for paper in papers])
+    url = f"https://api.alphaxiv.org/v2/papers/trending-papers?page_num={page_num}&sort_by={sort_by}&page_size={page_size}&interval={interval}"
+    referer = f"https://www.alphaxiv.org/explore?sort={sort_by}&time={interval}"
+    time.sleep(wait)
+    response = requests.get(url, headers={"Referer": referer})
+    print(f"Status code {response.status_code}, {len(response.text)} characters at page {page_num}")
+    if response.status_code != 200:
+        print(f"Failed to fetch data: {response.status_code}")
+        return []
+    json = response.json()
+    if not json or "error" in json or "data" not in json or "trending_papers" not in json["data"]:
+        print("No articles found or error in response.")
+        return []
+    return [paper_to_dict(paper) for paper in json["data"]["trending_papers"]]
+
+
+def search_alphaxiv(sort_by="Likes", interval="30+Days", page_size=10, limit=30, wait=1):
+    """https://www.alphaxiv.org/explore?sort=Likes&time=30+Days"""
+    page_nums = [i for i in range(0, (limit + page_size - 1) // page_size)]
+    return pd.json_normalize(flatten([get_alphaxiv(sort_by=sort_by, interval=interval, page_size=page_size, page_num=page_num, wait=wait) for page_num in page_nums]))
 
 
 def get_arxiv_stats(document_df: pd.DataFrame):
@@ -204,7 +210,9 @@ def get_arxiv_contents(id_list: list[str], chunk_size=100):
     return pd.json_normalize([arxiv_result_to_dict(r) for r in rs])
 
 
-def filter_df(df: pd.DataFrame, top_n=10, days=365):
+def filter_df(df: pd.DataFrame, top_n=10, days=365, count=1, num_comments=0):
+    df = df[df["count"] >= count]
+    df = df[df["num_comments"] >= num_comments]
     days_ago = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")  # noqa: F841
     return df.query("published > @days_ago").head(top_n).reset_index(drop=True)
 
@@ -226,14 +234,14 @@ def summarize(query, time_filter="month", days=30, limit=300):
         hackernews_document_df = pd.json_normalize([])
     try:
         print("search_huggingface...")
-        search_huggingface_df = search_huggingface(months=2)
+        search_huggingface_df = search_huggingface(days=days)
         print("search_huggingface...done: ", len(search_huggingface_df))
     except Exception as e:
         print(e)
         search_huggingface_df = pd.json_normalize([])
     try:
         print("search_alphaxiv...")
-        search_alphaxiv_df = search_alphaxiv()
+        search_alphaxiv_df = search_alphaxiv(limit=limit)
         print("search_alphaxiv...done: ", len(search_alphaxiv_df))
     except Exception as e:
         print(e)
@@ -269,6 +277,8 @@ def main():
     summarize_days = 30  # should be 30 if "month"
     summarize_limit = 500
     filter_days = 30
+    filter_count = 1
+    filter_num_comments = 1
     deepl_target_lang = "JA"
     deepl_expire_days = 90
     notify_top_n = int(os.getenv("NOTIFY_TOP_N", 10))
@@ -288,7 +298,7 @@ def main():
     paper_df, document_df = summarize(query, time_filter=summarize_time_filter, days=summarize_days, limit=summarize_limit)
 
     # filter by days
-    filtered_df = filter_df(paper_df, top_n=notify_top_n, days=filter_days)
+    filtered_df = filter_df(paper_df, top_n=notify_top_n, days=filter_days, count=filter_count, num_comments=filter_num_comments)
     print("filtered_df: ", len(filtered_df))
 
     # translate summary text
