@@ -92,11 +92,12 @@ def search_hackernews(query: str, attribute="", days=0, limit: int | None = None
 def article_to_dict(article: dict):
     """https://huggingface.co/docs/hub/en/api#get-apidailypapers"""
     arxiv_id = article["paper"]["id"]
+    created_at = int(datetime.fromisoformat(article["paper"]["submittedOnDailyAt"].replace("Z", "+00:00")).timestamp())
     return {
         "id": f"https://huggingface.co/papers/{arxiv_id}",
         "score": article["paper"]["upvotes"],
         "num_comments": article["numComments"],
-        "created_at": article["paper"]["submittedOnDailyAt"],
+        "created_at": created_at,
         "arxiv_id": [arxiv_id],
         "title": article["title"],
         "description": article["summary"],
@@ -106,8 +107,11 @@ def article_to_dict(article: dict):
 def get_huggingface(timestamp: float, wait=1):
     """https://huggingface.co/docs/hub/en/api#get-apidailypapers"""
     date = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d")
+    url = f"https://huggingface.co/api/daily_papers?date={date}"
+    referer = f"https://huggingface.co/papers/date/{date}"
+    ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
     time.sleep(wait)
-    response = requests.get(f"https://huggingface.co/api/daily_papers?date={date}")
+    response = requests.get(url, headers={"Referer": referer, "User-Agent": ua})
     print(f"Status code {response.status_code}, {len(response.text)} characters at {date}")
     if response.status_code != 200:
         print(f"Failed to fetch data for {date}: {response.status_code}")
@@ -130,11 +134,12 @@ def search_huggingface(days=30, wait=1):
 def paper_to_dict(paper: dict):
     """https://www.alphaxiv.org/explore?sort=Likes&time=30+Days"""
     arxiv_id = paper["universal_paper_id"]
+    created_at = int(datetime.fromisoformat(paper["created_at"].replace("Z", "+00:00")).timestamp())
     return {
         "id": f"https://www.alphaxiv.org/abs/{arxiv_id}",
         "score": paper["metrics"]["public_total_votes"],
         "num_comments": 0,  # TODO: find the number of comments
-        "created_at": paper["created_at"],
+        "created_at": created_at,
         "arxiv_id": [arxiv_id],
         "title": paper["title"],
         "description": paper["abstract"],
@@ -145,8 +150,9 @@ def get_alphaxiv(sort_by="Likes", interval="30+Days", page_size=10, page_num=0, 
     """https://www.alphaxiv.org/explore?sort=Likes&time=30+Days"""
     url = f"https://api.alphaxiv.org/v2/papers/trending-papers?page_num={page_num}&sort_by={sort_by}&page_size={page_size}&interval={interval}"
     referer = f"https://www.alphaxiv.org/explore?sort={sort_by}&time={interval}"
+    ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
     time.sleep(wait)
-    response = requests.get(url, headers={"Referer": referer})
+    response = requests.get(url, headers={"Referer": referer, "User-Agent": ua})
     print(f"Status code {response.status_code}, {len(response.text)} characters at page {page_num}")
     if response.status_code != 200:
         print(f"Failed to fetch data: {response.status_code}")
@@ -275,7 +281,7 @@ def main():
     query = "arxiv.org"
     summarize_time_filter = "month"  # or "week"
     summarize_days = 30  # should be 30 if "month"
-    summarize_limit = 500
+    summarize_limit = 300
     filter_days = 30
     filter_count = 1
     filter_num_comments = 1
