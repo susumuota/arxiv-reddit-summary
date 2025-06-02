@@ -137,6 +137,7 @@ def post_to_twitter(api_v1: tweepy.API, api_v2: tweepy.Client, dlc: deeplcache.D
     df = df[::-1]  # reverse order
     twenty_three_hours_ago = datetime.now(timezone.utc) - timedelta(hours=23)
     seg = pysbd.Segmenter(language="en", clean=False)
+    post_to_twitter_ranking(api_v1, api_v2, dlc, df)
     for i, (arxiv_id, updated, title, summary, authors, comment, primary_category, categories, score, num_comments, count) in enumerate(zip(df["arxiv_id"], df["updated"], df["title"], df["summary"], df["authors"], df["comment"], df["primary_category"], df["categories"], df["score"], df["num_comments"], df["count"])):
         trans = dlc.get(arxiv_id, None)
         if trans is None:
@@ -162,4 +163,3 @@ def post_to_twitter(api_v1: tweepy.API, api_v2: tweepy.Client, dlc: deeplcache.D
         post_to_twitter_trans(api_v1, api_v2, prev_tweet_id, arxiv_id, title, authors, summary_texts, trans_texts)
         print("post_to_twitter: ", f"[{len(df) - i}/{len(df)}]")
         time.sleep(1)
-    post_to_twitter_ranking(api_v1, api_v2, dlc, df)
