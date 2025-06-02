@@ -318,11 +318,20 @@ def main():
     dlc.save_to_gcs(gcs_bucket, "deepl_cache.json.gz")
 
     # post
-    postslack.post_to_slack(slack_api, slack_channel, dlc, filtered_df, document_df)  # type: ignore
+    try:
+        postslack.post_to_slack(slack_api, slack_channel, dlc, filtered_df, document_df)
+    except Exception as e:
+        print(e)
 
-    postbluesky.post_to_bluesky(bluesky_api, dlc, filtered_df, document_df)
+    try:
+        postbluesky.post_to_bluesky(bluesky_api, dlc, filtered_df, document_df)
+    except Exception as e:
+        print(e)
 
-    posttwitter.post_to_twitter(tweepy_api_v1, tweepy_api_v2, dlc, filtered_df, document_df)
+    try:
+        posttwitter.post_to_twitter(tweepy_api_v1, tweepy_api_v2, dlc, filtered_df, document_df)
+    except Exception as e:
+        print(e)
 
 
 if __name__ == "__main__":
