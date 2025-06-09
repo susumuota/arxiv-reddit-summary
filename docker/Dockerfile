@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022-2025 Susumu OTA <1632335+susumuota@users.noreply.github.com>
 # SPDX-License-Identifier: MIT
 
-FROM python:3.11.11-slim
+FROM python:3.11.13-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
   aria2 \
