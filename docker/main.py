@@ -128,7 +128,8 @@ def search_huggingface(days=30, wait=1):
     """https://huggingface.co/docs/hub/en/api#get-apidailypapers"""
     now = datetime.now()
     timestamps = [(now - timedelta(days=d)).timestamp() for d in range(days)]
-    return pd.json_normalize(flatten([get_huggingface(ts, wait) for ts in timestamps]))
+    df = pd.json_normalize(flatten([get_huggingface(ts, wait) for ts in timestamps]))
+    return df.drop_duplicates(subset=["id"], keep="last").reset_index(drop=True)
 
 
 def paper_to_dict(paper: dict):
@@ -167,7 +168,8 @@ def get_alphaxiv(sort_by="Likes", interval="30+Days", page_size=10, page_num=0, 
 def search_alphaxiv(sort_by="Likes", interval="30+Days", page_size=10, limit=30, wait=1):
     """https://www.alphaxiv.org/explore?sort=Likes&time=30+Days"""
     page_nums = [i for i in range(0, (limit + page_size - 1) // page_size)]
-    return pd.json_normalize(flatten([get_alphaxiv(sort_by=sort_by, interval=interval, page_size=page_size, page_num=page_num, wait=wait) for page_num in page_nums]))
+    df = pd.json_normalize(flatten([get_alphaxiv(sort_by=sort_by, interval=interval, page_size=page_size, page_num=page_num, wait=wait) for page_num in page_nums]))
+    return df.drop_duplicates(subset=["id"], keep="last").reset_index(drop=True)
 
 
 def get_arxiv_stats(document_df: pd.DataFrame):
