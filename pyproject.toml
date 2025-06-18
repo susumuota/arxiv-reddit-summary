@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "arxiv-reddit-summary"
-version = "0.7.4"
+version = "0.7.5"
 description = "Summarize the top 30 most popular arXiv papers on Reddit, Hacker News and Hugging Face in the last 30 days. And post them to Slack, Twitter and Bluesky."
 authors = ["Susumu OTA <1632335+susumuota@users.noreply.github.com>"]
 license = "MIT"
