@@ -135,7 +135,11 @@ def search_huggingface(days=30, wait=1):
 def paper_to_dict(paper: dict):
     """https://www.alphaxiv.org/explore?sort=Likes&time=30+Days"""
     arxiv_id = paper["universal_paper_id"]
-    created_at = int(datetime.fromisoformat(paper["created_at"].replace("Z", "+00:00")).timestamp())
+    try:
+        created_at = int(datetime.fromisoformat(paper["publication_date"].replace("Z", "+00:00")).timestamp())
+    except Exception as e:
+        print(f"Failed to parse publication date for {arxiv_id}: {e}")
+        created_at = datetime.now(timezone.utc).timestamp()
     return {
         "id": f"https://www.alphaxiv.org/abs/{arxiv_id}",
         "score": paper["metrics"]["public_total_votes"],
