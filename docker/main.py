@@ -29,6 +29,7 @@ from google.cloud import storage
 
 # https://info.arxiv.org/help/arxiv_identifier.html
 ARXIV_URL_PATTERN = re.compile(r"https?://arxiv\.org/(abs|pdf)/([0-9]{4}\.[0-9]{4,5})(v[0-9]+)?(\.pdf)?")
+ARXIV_ID_PATTERN = re.compile(r"([0-9]{4}\.[0-9]{4,5})(v[0-9]+)?")
 
 
 def parse_arxiv_ids(text: str) -> list[str]:
@@ -176,6 +177,24 @@ def search_alphaxiv(sort_by="Likes", interval="30+Days", page_size=10, limit=30,
     return df.drop_duplicates(subset=["id"], keep="last").reset_index(drop=True)
 
 
+def filter_invalid_arxiv_id(document_df: pd.DataFrame):
+    """Filter out documents with invalid arXiv IDs using ARXIV_ID_PATTERN."""
+
+    def is_valid_arxiv_id_list(arxiv_id_list):
+        if not arxiv_id_list:
+            return False
+        return all(ARXIV_ID_PATTERN.match(arxiv_id) for arxiv_id in arxiv_id_list)
+
+    valid_mask = document_df["arxiv_id"].apply(is_valid_arxiv_id_list)
+    filtered_df = document_df[valid_mask].reset_index(drop=True)
+
+    invalid_count = len(document_df) - len(filtered_df)
+    if invalid_count > 0:
+        print(f"Filtered out {invalid_count} documents with invalid arXiv IDs")
+
+    return filtered_df
+
+
 def get_arxiv_stats(document_df: pd.DataFrame):
     return document_df.explode("arxiv_id").groupby("arxiv_id").agg(score=("score", "sum"), num_comments=("num_comments", "sum"), count=("id", "count"), document_id=("id", pd.Series.to_list)).sort_values(by=["score", "num_comments", "count"], ascending=False).reset_index()
 
@@ -258,7 +277,8 @@ def summarize(query, time_filter="month", days=30, limit=300):
     except Exception as e:
         print(e)
         search_alphaxiv_df = pd.json_normalize([])
-    document_df = pd.concat([reddit_document_df, hackernews_document_df, search_huggingface_df, search_alphaxiv_df], ignore_index=True).sort_values(by=["score", "num_comments"], ascending=False).reset_index(drop=True)
+    concat_df = pd.concat([reddit_document_df, hackernews_document_df, search_huggingface_df, search_alphaxiv_df], ignore_index=True).sort_values(by=["score", "num_comments"], ascending=False).reset_index(drop=True)
+    document_df = filter_invalid_arxiv_id(concat_df)
     print("document_df: ", len(document_df))
     stats_df = get_arxiv_stats(document_df)
     print("stats_df: ", len(stats_df))
