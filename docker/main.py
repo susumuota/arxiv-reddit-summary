@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 Susumu OTA <1632335+susumuota@users.noreply.github.com>
+# SPDX-FileCopyrightText: 2023-2026 Susumu OTA <1632335+susumuota@users.noreply.github.com>
 #
 # SPDX-License-Identifier: MIT
 
@@ -18,13 +18,15 @@ import deeplcache
 import nanoatp
 import pandas as pd
 import postbluesky
-import postslack
-import posttwitter
+
+# import postslack
+# import posttwitter
 import praw
 import pysbd
 import requests
-import slack_sdk
-import tweepy
+
+# import slack_sdk
+# import tweepy
 from google.cloud import storage
 
 # https://info.arxiv.org/help/arxiv_identifier.html
@@ -152,26 +154,26 @@ def paper_to_dict(paper: dict):
     }
 
 
-def get_alphaxiv(sort_by="Likes", interval="30+Days", page_size=10, page_num=0, wait=1):
-    """https://www.alphaxiv.org/explore?sort=Likes&time=30+Days"""
-    url = f"https://api.alphaxiv.org/v2/papers/trending-papers?page_num={page_num}&sort_by={sort_by}&page_size={page_size}&interval={interval}"
-    referer = f"https://www.alphaxiv.org/explore?sort={sort_by}&time={interval}"
-    ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
+def get_alphaxiv(sort_by="Likes", interval="30+Days", page_size=20, page_num=0, wait=1):
+    """https://www.alphaxiv.org/?interval=30+Days&sort=Likes"""
+    url = f"https://api.alphaxiv.org/papers/v3/feed?pageNum={page_num}&sort={sort_by}&pageSize={page_size}&interval={interval}&topics=%5B%5D"
+    referer = f"https://www.alphaxiv.org/?interval={interval}&sort={sort_by}"
+    ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
     time.sleep(wait)
     response = requests.get(url, headers={"Referer": referer, "User-Agent": ua})
     print(f"Status code {response.status_code}, {len(response.text)} characters at page {page_num}")
     if response.status_code != 200:
         print(f"Failed to fetch data: {response.status_code}")
         return []
-    json = response.json()
-    if not json or "error" in json or "data" not in json or "trending_papers" not in json["data"]:
+    js = response.json()
+    if not js or "error" in js or "papers" not in js:
         print("No articles found or error in response.")
         return []
-    return [paper_to_dict(paper) for paper in json["data"]["trending_papers"]]
+    return [paper_to_dict(paper) for paper in js["papers"]]
 
 
-def search_alphaxiv(sort_by="Likes", interval="30+Days", page_size=10, limit=30, wait=1):
-    """https://www.alphaxiv.org/explore?sort=Likes&time=30+Days"""
+def search_alphaxiv(sort_by="Likes", interval="30+Days", page_size=20, limit=30, wait=1):
+    """https://www.alphaxiv.org/?interval=30+Days&sort=Likes"""
     page_nums = [i for i in range(0, (limit + page_size - 1) // page_size)]
     df = pd.json_normalize(flatten([get_alphaxiv(sort_by=sort_by, interval=interval, page_size=page_size, page_num=page_num, wait=wait) for page_num in page_nums]))
     return df.drop_duplicates(subset=["id"], keep="last").reset_index(drop=True)
@@ -238,6 +240,7 @@ def get_arxiv_contents(id_list: list[str], chunk_size=100):
                 print("search_arxiv_contents: ", i, len(r), len(rs))
             except Exception as e:
                 print(e)
+                raise e
     return pd.json_normalize([arxiv_result_to_dict(r) for r in rs])
 
 
@@ -318,11 +321,11 @@ def main():
     # prepare apis
     gcs_bucket = storage.Client().bucket(os.getenv("GCS_BUCKET_NAME"))
     deepl_api = deepl.Translator(os.getenv("DEEPL_AUTH_KEY"))  # type: ignore
-    slack_api = slack_sdk.WebClient(os.getenv("SLACK_BOT_TOKEN"))
-    slack_channel = os.getenv("SLACK_CHANNEL")
-    tweepy_api_v2 = tweepy.Client(bearer_token=os.getenv("TWITTER_BEARER_TOKEN"), consumer_key=os.getenv("TWITTER_API_KEY"), consumer_secret=os.getenv("TWITTER_API_KEY_SECRET"), access_token=os.getenv("TWITTER_ACCESS_TOKEN"), access_token_secret=os.getenv("TWITTER_ACCESS_TOKEN_SECRET"), wait_on_rate_limit=True)
+    # slack_api = slack_sdk.WebClient(os.getenv("SLACK_BOT_TOKEN"))
+    # slack_channel = os.getenv("SLACK_CHANNEL")
+    # tweepy_api_v2 = tweepy.Client(bearer_token=os.getenv("TWITTER_BEARER_TOKEN"), consumer_key=os.getenv("TWITTER_API_KEY"), consumer_secret=os.getenv("TWITTER_API_KEY_SECRET"), access_token=os.getenv("TWITTER_ACCESS_TOKEN"), access_token_secret=os.getenv("TWITTER_ACCESS_TOKEN_SECRET"), wait_on_rate_limit=True)
     # because media_upload is only available on api v1.
-    tweepy_api_v1 = tweepy.API(tweepy.OAuth1UserHandler(consumer_key=os.getenv("TWITTER_API_KEY"), consumer_secret=os.getenv("TWITTER_API_KEY_SECRET"), access_token=os.getenv("TWITTER_ACCESS_TOKEN"), access_token_secret=os.getenv("TWITTER_ACCESS_TOKEN_SECRET")), wait_on_rate_limit=True)
+    # tweepy_api_v1 = tweepy.API(tweepy.OAuth1UserHandler(consumer_key=os.getenv("TWITTER_API_KEY"), consumer_secret=os.getenv("TWITTER_API_KEY_SECRET"), access_token=os.getenv("TWITTER_ACCESS_TOKEN"), access_token_secret=os.getenv("TWITTER_ACCESS_TOKEN_SECRET")), wait_on_rate_limit=True)
     bluesky_api = nanoatp.BskyAgent()
     bluesky_api.login(os.getenv("ATP_IDENTIFIER"), os.getenv("ATP_PASSWORD"))  # type: ignore
 
@@ -344,20 +347,20 @@ def main():
     dlc.save_to_gcs(gcs_bucket, "deepl_cache.json.gz")
 
     # post
-    try:
-        postslack.post_to_slack(slack_api, slack_channel, dlc, filtered_df, document_df)
-    except Exception as e:
-        print(e)
+    # try:
+    #     postslack.post_to_slack(slack_api, slack_channel, dlc, filtered_df, document_df)
+    # except Exception as e:
+    #     print(e)
 
     try:
         postbluesky.post_to_bluesky(bluesky_api, dlc, filtered_df, document_df)
     except Exception as e:
         print(e)
 
-    try:
-        posttwitter.post_to_twitter(tweepy_api_v1, tweepy_api_v2, dlc, filtered_df, document_df)
-    except Exception as e:
-        print(e)
+    # try:
+    #     posttwitter.post_to_twitter(tweepy_api_v1, tweepy_api_v2, dlc, filtered_df, document_df)
+    # except Exception as e:
+    #     print(e)
 
 
 if __name__ == "__main__":
