@@ -105,7 +105,7 @@ def post_to_twitter_ranking(api_v1: tweepy.API, api_v2: tweepy.Client, dlc: deep
     date = datetime.now(timezone.utc).strftime("%d %b %Y")
     media_ids = []
     html_text = generatehtml.generate_top_n_html(title, date, df, dlc)
-    top_n_media_id = upload_html_to_twitter(api_v1, "top_n.jpg", html_text)
+    top_n_media_id = upload_html_to_twitter(api_v1, "top_n.png", html_text)
     if top_n_media_id:
         rev_df = df[::-1]
         metadata = "\n".join(map(lambda item: f"[{item[0] + 1}/{len(df)}] arxiv.org/abs/{item[1][0]}", enumerate(zip(rev_df["arxiv_id"]))))
@@ -121,7 +121,7 @@ def post_to_twitter_ranking(api_v1: tweepy.API, api_v2: tweepy.Client, dlc: deep
 def post_to_twitter_trans(api_v1: tweepy.API, api_v2: tweepy.Client, prev_tweet_id: str, arxiv_id: str, title: str, authors: list[str], summary_texts: list[str], trans_texts: list[str]):
     html_text = generatehtml.generate_trans_html(arxiv_id, title, authors, trans_texts, summary_texts)
     media_ids = []
-    translation_media_id = upload_html_to_twitter(api_v1, f"{arxiv_id}.trans.jpg", html_text)
+    translation_media_id = upload_html_to_twitter(api_v1, f"{arxiv_id}.trans.png", html_text)
     trans_text = "".join(trans_texts)
     if translation_media_id:
         api_v1.create_media_metadata(translation_media_id, utils.strip_tweet(trans_text, 1000))

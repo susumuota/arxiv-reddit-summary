@@ -133,10 +133,10 @@ def post_to_bluesky_posts(api: nanoatp.BskyAgent, root_post: dict[str, str], par
     return parent_post
 
 
-def upload_html_to_bluesky(api: nanoatp.BskyAgent, filename: str, html_text: str, alt_text: str, quality: int = 94) -> dict[str, Any]:
+def upload_html_to_bluesky(api: nanoatp.BskyAgent, filename: str, html_text: str, alt_text: str) -> dict[str, Any]:
     with tempfile.TemporaryDirectory() as tmp_dir:
         abs_path = os.path.join(tmp_dir, filename)
-        abs_path = utils.html_to_image(html_text, abs_path, quality)
+        abs_path = utils.html_to_image(html_text, abs_path)
         if os.path.isfile(abs_path) and os.path.getsize(abs_path) > 0:
             return api.uploadImage(abs_path, utils.strip_tweet(alt_text, 2000))
     return {}
@@ -146,7 +146,7 @@ def post_to_bluesky_trans(api: nanoatp.BskyAgent, root_post: dict[str, str], par
     html_text = generatehtml.generate_trans_html(arxiv_id, title, authors, trans_texts, summary_texts)
     trans_text = "".join(trans_texts)
     images = []
-    image = upload_html_to_bluesky(api, f"{arxiv_id}.trans.jpg", html_text, "\n\n".join(trans_texts))
+    image = upload_html_to_bluesky(api, f"{arxiv_id}.trans.png", html_text, "\n\n".join(trans_texts))
     images.append(image) if image else None
     text = f"{arxiv_id}\n{trans_text}"
     patterns = [(arxiv_id, f"https://arxiv.org/abs/{arxiv_id}")]
@@ -166,7 +166,7 @@ def post_to_bluesky_ranking(api: nanoatp.BskyAgent, dlc: deeplcache.DeepLCache, 
     html_text = generatehtml.generate_top_n_html(title, date, df, dlc)
     uris = list(map(lambda item: (f"{item[0] + 1}/{len(df)}", f"https://arxiv.org/abs/{item[1][0]}"), enumerate(zip(df[::-1]["arxiv_id"]))))
     alt_text = "\n".join(map(lambda item: " ".join(item), uris))
-    image = upload_html_to_bluesky(api, "top_n.jpg", html_text, alt_text, 90)  # sometimes the image is too large to upload
+    image = upload_html_to_bluesky(api, "top_n.png", html_text, alt_text)  # sometimes the image is too large to upload
     images = []
     images.append(image) if image else None
     text = title + " ".join(map(lambda item: f"[{item[0]}]", uris))
@@ -203,8 +203,9 @@ def post_to_bluesky(api: nanoatp.BskyAgent, dlc: deeplcache.DeepLCache, df: pd.D
         top_n_documents = document_df[document_df["arxiv_id"].apply(lambda ids: arxiv_id in ids)].head(3)  # TODO
         parent_post = post_to_bluesky_posts(api, root_post, parent_post, top_n_documents)
         parent_post = post_to_bluesky_link(api, root_post, parent_post, arxiv_id, title, summary_texts)
-        time.sleep(1)
-        post_to_bluesky_trans(api, root_post, parent_post, arxiv_id, title, authors, summary_texts, trans_texts)
+        # time.sleep(1)
+        # post_to_bluesky_trans(api, root_post, parent_post, arxiv_id, title, authors, summary_texts, trans_texts)
         print("post_to_bluesky: ", f"[{len(df) - i}/{len(df)}]")
         time.sleep(1)
-    return post_to_bluesky_ranking(api, dlc, df)
+    # return post_to_bluesky_ranking(api, dlc, df)
+    return

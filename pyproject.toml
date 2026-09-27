@@ -13,7 +13,6 @@ pandas = "^2.2.3"
 arxiv = "^2.1.3"
 tweepy = "^4.15.0"
 python-dateutil = "^2.9.0.post0"
-imgkit = "^1.2.3"
 google-cloud-storage = "^3.0.0"
 deepl = "^1.21.0"
 pysbd = "^0.3.4"
@@ -21,6 +20,7 @@ slack-sdk = "^3.34.0"
 nanoatp = "^0.5.1"
 requests = "^2.32.3"
 beautifulsoup4 = "^4.13.3"
+weasyprint = "^68.1"
 
 
 [tool.poetry.group.dev.dependencies]

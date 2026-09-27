@@ -3,10 +3,11 @@
 
 import os
 import subprocess
+import tempfile
 import unicodedata
 from shlex import quote
 
-import imgkit
+from weasyprint import HTML
 
 
 def download_arxiv_pdf(arxiv_id: str, tmp_dir: str):
@@ -25,9 +26,24 @@ def pdf_to_png(pdf_filename: str):
     return f"{pdf_filename}.png"
 
 
-def html_to_image(html: str, image_filename: str, quality: int = 94):
-    result = imgkit.from_string(html, image_filename, options={"width": 1200, "quiet": "", "quality": quality})
-    assert result is True  # TODO
+def html_to_image(html: str, image_filename: str):
+    base, ext = os.path.splitext(image_filename)
+    if ext.lower() != ".png":
+        raise ValueError(f"expected .png output, got {image_filename!r}")
+    with tempfile.TemporaryDirectory() as td:
+        pdf_path = os.path.join(td, "page.pdf")
+        HTML(string=html).write_pdf(
+            pdf_path,
+            presentational_hints=True,
+        )
+        pdf_q = quote(pdf_path)
+        out_q = quote(base)
+        result = subprocess.run(
+            f"pdftoppm -q -png -singlefile -scale-to-x 1200 -scale-to-y -1 {pdf_q} {out_q}",
+            shell=True,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"pdftoppm failed with code {result.returncode}")
     return image_filename
 
 

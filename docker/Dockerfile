@@ -7,7 +7,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   aria2 \
   fonts-ipafont-gothic \
   poppler-utils \
-  wkhtmltopdf \
+  libpango-1.0-0 \
+  libpangoft2-1.0-0 \
+  libharfbuzz0b \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
